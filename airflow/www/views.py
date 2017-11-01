@@ -2150,7 +2150,7 @@ class Airflow(AirflowViewMixin, BaseView):
         return redirect('/admin/variable')
 
 
-class HomeView(AirflowViewMixin, AdminIndexView):
+class HomeView(AirflowViewMixin, AdminIndexView, LoggingMixin):
     @expose("/")
     @login_required
     @provide_session
@@ -2239,8 +2239,11 @@ class HomeView(AirflowViewMixin, AdminIndexView):
 
         auto_complete_data = set()
         for row in query.with_entities(DM.dag_id, DM.owners):
-            auto_complete_data.add(row.dag_id)
-            auto_complete_data.add(row.owners)
+            try:
+                auto_complete_data.add(row.dag_id)
+                auto_complete_data.add(row.owners)
+            except Exception as e:
+                self.log.error(e)
 
         return self.render(
             'airflow/dags.html',
