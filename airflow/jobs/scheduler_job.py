@@ -1259,7 +1259,7 @@ class SchedulerJob(BaseJob):
                     self.log.error("DAG ID %s was not found in the DagBag", dag.dag_id)
                     continue
 
-                if dag.is_paused:
+                if dag.is_paused():
                     self.log.info("Not processing DAG %s since it's paused", dag.dag_id)
                     continue
 
@@ -1553,7 +1553,7 @@ class SchedulerJob(BaseJob):
             dag.sync_to_db()
 
         paused_dag_ids = [dag.dag_id for dag in dagbag.dags.values()
-                          if dag.is_paused]
+                          if dag.is_paused()]
 
         # Pickle the DAGs (if necessary) and put them into a SimpleDag
         for dag_id in dagbag.dags:

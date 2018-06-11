@@ -553,7 +553,6 @@ class TaskInstance(Base, LoggingMixin):
 
         return None
 
-    @property
     def previous_ti(self):  # type: () -> Optional['TaskInstance']
         """The task instance for the task that ran before this task instance."""
         return self._get_previous_ti()

@@ -572,7 +572,6 @@ class DAG(BaseDag, LoggingMixin):
         )
         return qry.scalar() >= self.concurrency
 
-    @property
     def concurrency_reached(self):
         """
         Returns a boolean indicating whether the concurrency limit for this DAG
@@ -586,7 +585,6 @@ class DAG(BaseDag, LoggingMixin):
             DagModel.dag_id == self.dag_id)
         return qry.value('is_paused')
 
-    @property
     def is_paused(self):
         """
         Returns a boolean indicating whether this DAG is paused
@@ -678,7 +676,6 @@ class DAG(BaseDag, LoggingMixin):
             DagRun.dag_id == self.dag_id
         ).scalar()
 
-    @property
     def latest_execution_date(self):
         """
         Returns the latest date for which at least one dag run exists

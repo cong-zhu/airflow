@@ -332,7 +332,7 @@ def get_date_time_num_runs_dag_runs_form_data(request, session, dag):
     if dttm:
         dttm = pendulum.parse(dttm)
     else:
-        dttm = dag.latest_execution_date or timezone.utcnow()
+        dttm = dag.latest_execution_date() or timezone.utcnow()
 
     base_date = request.args.get('base_date')
     if base_date:
@@ -1498,7 +1498,7 @@ class Airflow(AirflowViewMixin, BaseView):
         if base_date:
             base_date = timezone.parse(base_date)
         else:
-            base_date = dag.latest_execution_date or timezone.utcnow()
+            base_date = dag.latest_execution_date() or timezone.utcnow()
 
         DR = models.DagRun
         dag_runs = (
@@ -1710,7 +1710,7 @@ class Airflow(AirflowViewMixin, BaseView):
         if base_date:
             base_date = pendulum.parse(base_date)
         else:
-            base_date = dag.latest_execution_date or timezone.utcnow()
+            base_date = dag.latest_execution_date() or timezone.utcnow()
 
         dates = dag.date_range(base_date, num=-abs(num_runs))
         min_date = dates[0] if dates else datetime(2000, 1, 1)
@@ -1819,7 +1819,7 @@ class Airflow(AirflowViewMixin, BaseView):
         if base_date:
             base_date = pendulum.parse(base_date)
         else:
-            base_date = dag.latest_execution_date or timezone.utcnow()
+            base_date = dag.latest_execution_date() or timezone.utcnow()
 
         dates = dag.date_range(base_date, num=-abs(num_runs))
         min_date = dates[0] if dates else datetime(2000, 1, 1)
@@ -1884,7 +1884,7 @@ class Airflow(AirflowViewMixin, BaseView):
         if base_date:
             base_date = pendulum.parse(base_date)
         else:
-            base_date = dag.latest_execution_date or timezone.utcnow()
+            base_date = dag.latest_execution_date() or timezone.utcnow()
 
         dates = dag.date_range(base_date, num=-abs(num_runs))
         min_date = dates[0] if dates else datetime(2000, 1, 1)
