@@ -27,6 +27,9 @@ import nose
 
 from airflow import DAG, configuration
 import airflow.operators.hive_operator
+from airflow.models import TaskInstance
+from airflow.utils import timezone
+
 configuration.load_test_config()
 
 
@@ -133,6 +136,27 @@ class HiveOperatorTest(HiveEnvironmentTest):
         self.assertEqual(
             t.hql,
             "SELECT * FROM ${hiveconf:table} PARTITION (${hiveconf:day});")
+
+    @mock.patch('airflow.operators.hive_operator.HiveOperator.get_hook')
+    def test_mapred_job_name(self, mock_get_hook):
+        mock_hook = mock.MagicMock()
+        mock_get_hook.return_value = mock_hook
+        t = HiveOperator(
+            task_id='test_mapred_job_name',
+            hql=self.hql,
+            dag=self.dag)
+
+        fake_execution_date = timezone.datetime(2018, 6, 19)
+        fake_ti = TaskInstance(task=t, execution_date=fake_execution_date)
+        fake_ti.hostname = 'fake_hostname'
+        fake_context = {'ti': fake_ti}
+
+        t.execute(fake_context)
+        self.assertEqual(
+            "Airflow HiveOperator task for {}.{}.{}.{}"
+            .format(fake_ti.hostname,
+                    self.dag.dag_id, t.task_id,
+                    fake_execution_date.isoformat()), mock_hook.mapred_job_name)
 
 
 if 'AIRFLOW_RUNALL_TESTS' in os.environ:
