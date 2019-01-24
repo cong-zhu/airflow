@@ -796,23 +796,53 @@ class SchedulerJob(BaseJob):
                 ti.set_state(new_state, session=session)
                 tis_changed += 1
         else:
+            start_query_s = time.time()
+
             subq = query.subquery()
-            tis_changed = session \
+            tis_to_change = session \
                 .query(models.TaskInstance) \
                 .filter(and_(
                     models.TaskInstance.dag_id == subq.c.dag_id,
                     models.TaskInstance.task_id == subq.c.task_id,
                     models.TaskInstance.execution_date ==
                     subq.c.execution_date)) \
-                .update({models.TaskInstance.state: new_state},
-                        synchronize_session=False)
-            session.commit()
+                    .all()
 
-        if tis_changed > 0:
-            self.log.warning(
-                "Set %s task instances to state=%s as their associated DagRun was not in RUNNING state",
-                tis_changed, new_state
-            )
+            if len(tis_to_change) > 0:
+                self.logger.info("Retrieve task instances: {} with {} s".format(len(tis_to_change), time.time() - start_query_s))
+
+                # makes chunks of max_tis_per_query size
+                chunks = [tis_to_change[i: i + self.max_tis_per_query]
+                           for i in range(0, len(tis_to_change), self.max_tis_per_query)]
+
+                info_msg = "Breaking updates for {num_tis} task instances into {batches} batches, with batch_size as "\
+                    "{batch_size}".format(
+                    num_tis=len(tis_to_change), batches=len(chunks), batch_size=self.max_tis_per_query)
+                self.logger.info(info_msg)
+
+                for chunk in chunks:
+                    try:
+                        start_s = time.time()
+                        # Log the dag id and execution date for monitoring and debugging incident.
+                        dag_ids_to_log = set([ti.dag_id + '-' + str(ti.execution_date) for ti in chunk])
+                        self.logger.info("Starting to update tis_without_dagrun chunk: {}".format(dag_ids_to_log))
+
+                        for ti in chunk:
+                            ti.state = new_state
+                            session.merge(ti)
+
+                        session.commit()
+                        tis_changed += len(chunk)
+                    except Exception as e:
+                        self.logger.exception("Exception change_state_for_tis_without_dagrun: {}, dag_ids: {}" \
+                                              .format(str(e), chunk))
+                    finally:
+                        self.logger.info("Finishing update tis_without_dagrun chunk in {} s".format(time.time() - start_s))
+
+            if tis_changed > 0:
+                self.logger.warning("Set {} task instances to state={} as their associated "
+                                    "DagRun was not in RUNNING state".format(tis_changed, new_state))
+
 
     @provide_session
     def __get_concurrency_maps(self, states, session=None):
