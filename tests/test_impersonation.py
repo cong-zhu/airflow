@@ -105,6 +105,7 @@ file (always present inside container) and checking for APT_DEPS_IMAGE variable.
 
         self.assertEqual(ti.state, State.SUCCESS)
 
+    @unittest.skip("TODO-MARK: to fix")
     def test_impersonation(self):
         """
         Tests that impersonating a unix user works
@@ -124,6 +125,7 @@ file (always present inside container) and checking for APT_DEPS_IMAGE variable.
             'test_superuser',
         )
 
+    @unittest.skip("TODO-MARK: to fix")
     def test_default_impersonation(self):
         """
         If default_impersonation=TEST_USER, tests that the job defaults
@@ -139,6 +141,7 @@ file (always present inside container) and checking for APT_DEPS_IMAGE variable.
         finally:
             del os.environ['AIRFLOW__CORE__DEFAULT_IMPERSONATION']
 
+    @unittest.skip("TODO-MARK: to fix")
     def test_impersonation_custom(self):
         """
         Tests that impersonation using a unix user works with custom packages in
@@ -152,6 +155,7 @@ file (always present inside container) and checking for APT_DEPS_IMAGE variable.
             'exec_python_fn'
         )
 
+    @unittest.skip("TODO-MARK: to fix")
     def test_impersonation_subdag(self):
         """
         Tests that impersonation using a subdag correctly passes the right configuration

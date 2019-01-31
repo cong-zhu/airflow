@@ -30,6 +30,7 @@ from airflow.utils import db
 from tests.compat import mock, patch
 
 
+@unittest.skip("TODO-MARK: Do not support CassandraHook for now")
 class CassandraHookTest(unittest.TestCase):
     def setUp(self):
         configuration.load_test_config()
