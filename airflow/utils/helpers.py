@@ -316,8 +316,19 @@ def reap_process_group(pid, log, sig=signal.SIGTERM,
             return
         raise
 
-    log.info("Sending %s to GPID %s", sig, pg)
-    os.killpg(os.getpgid(pid), sig)
+    log.debug("I'm process %s, pid to kill is %s", os.getpid(), pid)
+    log.info("Sending %s to PGID %s", sig, pg)
+    try:
+        os.killpg(os.getpgid(pid), sig)
+    except OSError as e:
+        if e.errno == 1:
+            kill_cmd = "sudo kill -%s -%s" % (sig, pg)
+            log.warn("Not enough permission to kill, shelling out and executing `%s`",
+                     kill_cmd)
+            os.system(kill_cmd)
+        else:
+            log.exception(e)
+            raise e
 
     gone, alive = psutil.wait_procs(children, timeout=timeout, callback=on_terminate)
 
