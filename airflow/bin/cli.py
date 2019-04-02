@@ -490,6 +490,9 @@ def run(args, dag=None):
         conf.conf.read_dict(conf_dict, source=args.cfg_path)
         settings.configure_vars()
 
+    # Dispose any connection pool created by importing settings.
+    # Temporary fix, pool construction should be refined to be idempotent.
+    settings.dispose_orm()
     # IMPORTANT, have to use the NullPool, otherwise, each "run" command may leave
     # behind multiple open sleeping connections while heartbeating, which could
     # easily exceed the database connection limit when
