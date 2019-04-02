@@ -23,6 +23,7 @@ from __future__ import print_function
 from __future__ import unicode_literals
 
 import getpass
+import time
 from time import sleep
 
 from sqlalchemy import Column, Index, Integer, String, and_, or_
@@ -165,6 +166,7 @@ class BaseJob(Base, LoggingMixin):
         heart rate. If you go over 60 seconds before calling it, it won't
         sleep at all.
         """
+        start_heartbeat = time.time()
         try:
             with create_session() as session:
                 job = session.query(BaseJob).filter_by(id=self.id).one()
@@ -197,6 +199,9 @@ class BaseJob(Base, LoggingMixin):
                 self.log.debug('[heartbeat]')
         except OperationalError as e:
             self.log.error("Scheduler heartbeat got an exception: %s", str(e))
+        finally:
+            self.logger.info("Job {} on host {} heartbeat with {} s".format(self.id, self.hostname,
+                                                                            time.time() - start_heartbeat))
 
     def run(self):
         Stats.incr(self.__class__.__name__.lower() + '_start', 1, 1)
