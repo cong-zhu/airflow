@@ -674,7 +674,8 @@ class SchedulerJob(BaseJob):
                 period_end = dag.following_schedule(next_run_date)
 
             # Don't schedule a dag beyond its end_date (as specified by the dag param)
-            if next_run_date and dag.end_date and next_run_date > dag.end_date:
+            if (next_run_date and dag.end_date and
+                timezone.convert_to_utc(next_run_date) > timezone.convert_to_utc(dag.end_date)):
                 return
 
             # Don't schedule a dag beyond its end_date (as specified by the task params)

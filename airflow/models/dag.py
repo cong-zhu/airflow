@@ -427,7 +427,7 @@ class DAG(BaseDag, LoggingMixin):
                 previous = timezone.make_aware(naive, tz)
             return timezone.convert_to_utc(previous)
         elif self._schedule_interval is not None:
-            return dttm - self._schedule_interval
+            return timezone.convert_to_utc(dttm - self._schedule_interval)
 
     def get_run_dates(self, start_date, end_date=None):
         """

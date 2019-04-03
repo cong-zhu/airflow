@@ -20,6 +20,7 @@
 from airflow.ti_deps.deps.base_ti_dep import BaseTIDep
 from airflow.utils.db import provide_session
 from airflow.utils.state import State
+from airflow.utils import timezone
 
 
 class PrevDagrunDep(BaseTIDep):
@@ -52,7 +53,8 @@ class PrevDagrunDep(BaseTIDep):
                     reason="This task does not have a schedule or is @once"
                 )
                 return
-            if dag.previous_schedule(ti.execution_date) < ti.task.start_date:
+            # TODO: figure out why we need to convert_to_utc but convert_to_utc is idempotent, we should be good
+            if dag.previous_schedule(ti.execution_date) < timezone.convert_to_utc(ti.task.start_date):
                 yield self._passing_status(
                     reason="This task instance was the first task instance for its task.")
                 return
