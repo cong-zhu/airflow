@@ -24,7 +24,7 @@ from sqlalchemy import or_
 from airflow import models
 from airflow.models import TaskFail, DagModel
 from airflow.utils.db import provide_session
-from airflow.exceptions import DagFileExists, DagNotFound
+from airflow.exceptions import DagFileExists, DagNotFound, NotSupportedFeature
 
 
 @provide_session
@@ -37,6 +37,8 @@ def delete_dag(dag_id, keep_records_in_log=True, session=None):
     :param session: session used
     :return count of deleted dags
     """
+    raise NotSupportedFeature("delete dag is disabled")
+
     dag = session.query(DagModel).filter(DagModel.dag_id == dag_id).first()
     if dag is None:
         raise DagNotFound("Dag id {} not found".format(dag_id))

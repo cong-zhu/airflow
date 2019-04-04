@@ -175,7 +175,7 @@
 
                 <!-- Delete -->
                 <!-- Use dag_id instead of dag.dag_id, because the DAG might not exist in the webserver's DagBag -->
-                <a href="{{ url_for('airflow.delete', dag_id=dag.dag_id) }}"
+                <a style="display:none" href="{{ url_for('airflow.delete', dag_id=dag.dag_id) }}"
                   onclick="return confirmDeleteDag(this, '{{ dag.dag_id }}')">
                    <span class="glyphicon glyphicon-remove-circle" style="color:red" aria-hidden="true" data-original-title="Delete Dag"></span>
                 </a>
@@ -212,10 +212,8 @@
   <script src="{{ url_for('static', filename='bootstrap-toggle.min.js') }}"></script>
   <script src="{{ url_for('static', filename='bootstrap3-typeahead.min.js') }}"></script>
   <script>
-
       const DAGS_INDEX = "{{ url_for('admin.index') }}";
       const ENTER_KEY_CODE = 13;
-
       $('#dag_query').on('keypress', function (e) {
         // check for key press on ENTER (key code 13) to trigger the search
         if (e.which === ENTER_KEY_CODE) {
@@ -224,12 +222,10 @@
           e.preventDefault();
         }
       });
-
       $('#page_size').on('change', function() {
         p_size = $(this).val();
         window.location = DAGS_INDEX + "?page_size=" + p_size;
       });
-
       function confirmTriggerDag(link, dag_id){
         if (confirm("Are you sure you want to run '"+dag_id+"' now?")) {
           postAsForm(link.href, {});
@@ -237,7 +233,6 @@
         // Never follow the link
         return false;
       }
-
       function confirmDeleteDag(link, dag_id){
         if (confirm("Are you sure you want to delete '"+dag_id+"' now?\n\
           This option will delete ALL metadata, DAG runs, etc.\n\
@@ -260,14 +255,12 @@
           $.post(url);
         });
       });
-
       var $input = $(".typeahead");
       unique_options_search = new Set([
           {% for token in auto_complete_data %}
             "{{token}}",
           {% endfor %}
         ]);
-
       $input.typeahead({
         source: [...unique_options_search],
         autoSelect: false,
@@ -278,13 +271,10 @@
           }
         }
       });
-
       $input.change(function() {
         var current = $input.typeahead("getActive");
       });
-
       $input.attr("autocomplete", "off");
-
       $('#dags').dataTable({
         "iDisplayLength": 500,
         "bSort": false,
@@ -324,7 +314,6 @@
                 y = (diameter/2) + stroke_width_hover;
                 return 'translate(' + x + ',' + y + ')';
               });
-
             g.append('text')
               .attr('fill', 'black')
               .attr('text-anchor', 'middle')
@@ -332,7 +321,6 @@
               .attr('font-size', 8)
               .attr('y', 3)
               .text(function(d){ return d.count > 0 ? d.count : ''; });
-
             g.append('circle')
               .attr('stroke-width', function(d) {
                   if (d.count > 0)
@@ -382,7 +370,6 @@
         }
         $("#pause_header").tooltip();
         $("#statuses_info").tooltip();
-
         $("circle").tooltip({
           html: true,
           container: "body",
@@ -403,7 +390,6 @@
                 y = (diameter/2) + stroke_width_hover;
                 return 'translate(' + x + ',' + y + ')';
               });
-
             g.append('text')
               .attr('fill', 'black')
               .attr('text-anchor', 'middle')
@@ -411,7 +397,6 @@
               .attr('font-size', 8)
               .attr('y', 3)
               .text(function(d){ return d.count > 0 ? d.count : ''; });
-
             g.append('circle')
               .attr('stroke-width', function(d) {
                   if (d.count > 0)
@@ -461,7 +446,6 @@
         }
         $("#pause_header").tooltip();
         $("#statuses_info").tooltip();
-
         $("circle").tooltip({
           html: true,
           container: "body",

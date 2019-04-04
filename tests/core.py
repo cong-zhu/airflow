@@ -1462,6 +1462,7 @@ class CliTests(unittest.TestCase):
                 '-c', 'NOT JSON'])
         )
 
+    @unittest.skip("Disable delete_dag")
     def test_delete_dag(self):
         DM = models.DagModel
         key = "my_dag_id"

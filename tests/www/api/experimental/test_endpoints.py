@@ -130,6 +130,7 @@ class TestApiExperimental(unittest.TestCase):
         )
         self.assertEqual(404, response.status_code)
 
+    @unittest.skip("Disable delete_dag")
     def test_delete_dag(self):
         url_template = '/api/experimental/dags/{}'
 

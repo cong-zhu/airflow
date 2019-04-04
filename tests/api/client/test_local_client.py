@@ -99,6 +99,7 @@ class TestLocalClient(unittest.TestCase):
                                          external_trigger=True)
             mock.reset_mock()
 
+    @unittest.skip("Disable delete_dag")
     def test_delete_dag(self):
         key = "my_dag_id"
         session = settings.Session()

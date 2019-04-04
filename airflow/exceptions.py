@@ -35,6 +35,9 @@ class AirflowException(Exception):
     """
     status_code = 500
 
+class NotSupportedFeature(AirflowException):
+    """Raise when a feature is not supported in airbnb"""
+    pass
 
 class AirflowBadRequest(AirflowException):
     """Raise when the application or server cannot handle the request"""
@@ -99,7 +102,6 @@ class DagRunAlreadyExists(AirflowBadRequest):
 class DagFileExists(AirflowBadRequest):
     """Raise when a DAG ID is still in DagBag i.e., DAG file is in DAG folder"""
     pass
-
 
 class TaskNotFound(AirflowNotFoundException):
     """Raise when a Task is not available in the system"""
