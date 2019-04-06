@@ -1252,28 +1252,31 @@ class SchedulerJob(BaseJob):
         :rtype: None
         """
         for dag in dags:
-            dag = dagbag.get_dag(dag.dag_id)
-            if not dag:
-                self.log.error("DAG ID %s was not found in the DagBag", dag.dag_id)
-                continue
+            try:
+                dag = dagbag.get_dag(dag.dag_id)
+                if not dag:
+                    self.log.error("DAG ID %s was not found in the DagBag", dag.dag_id)
+                    continue
 
-            if dag.is_paused:
-                self.log.info("Not processing DAG %s since it's paused", dag.dag_id)
-                continue
+                if dag.is_paused:
+                    self.log.info("Not processing DAG %s since it's paused", dag.dag_id)
+                    continue
 
-            self.log.info("Processing %s", dag.dag_id)
+                self.log.info("Processing %s", dag.dag_id)
 
-            dag_run = self.create_dag_run(dag)
-            if dag_run:
-                expected_start_date = dag.following_schedule(dag_run.execution_date)
-                if expected_start_date:
-                    schedule_delay = dag_run.start_date - expected_start_date
-                    Stats.timing(
-                        'dagrun.schedule_delay.{dag_id}'.format(dag_id=dag.dag_id),
-                        schedule_delay)
-                self.log.info("Created %s", dag_run)
-            self._process_task_instances(dag, tis_out)
-            self.manage_slas(dag)
+                dag_run = self.create_dag_run(dag)
+                if dag_run:
+                    expected_start_date = dag.following_schedule(dag_run.execution_date)
+                    if expected_start_date:
+                        schedule_delay = dag_run.start_date - expected_start_date
+                        Stats.timing(
+                            'dagrun.schedule_delay.{dag_id}'.format(dag_id=dag.dag_id),
+                            schedule_delay)
+                    self.log.info("Created %s", dag_run)
+                self._process_task_instances(dag, tis_out)
+                self.manage_slas(dag)
+            except Exception as e:
+                self.log.error("Failed to process dag: {}".format(dag.dag_id), exc_info=True)
 
     @provide_session
     def _process_executor_events(self, simple_dag_bag, session=None):
