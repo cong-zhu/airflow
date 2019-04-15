@@ -1,0 +1,19 @@
+version: 4
+container:
+  build_context_path: ../../scripts/docker
+  dockerfile_path: ../py27/Dockerfile
+
+steps:
+  - type: run
+    name: Update airflow/version.py
+    command: python _infra/ci/jobs/bump_version.py
+
+  - type: run
+    name: Config pip for uploading pypi
+    command: ./_infra/ci/jobs/prepare_pypi.sh
+    env:
+      WORKFLOW_ORC_ARTIFACTORY_TOKEN: "{% secret artifactory_token %}"
+
+  - type: run
+    name: Upload pypi
+    command: python setup.py sdist upload -r local
