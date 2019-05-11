@@ -179,6 +179,7 @@ class UtilsTest(unittest.TestCase):
         mocked_current_user = mock.MagicMock()
         mocked_get_user.return_value = mocked_current_user
         mocked_current_user.user = None
+        del mocked_current_user.username
         mocked_session_instance = mock.MagicMock()
         mocked_session.return_value = mocked_session_instance
 

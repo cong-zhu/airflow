@@ -260,6 +260,9 @@ def action_logging(f):
         # AnonymousUserMixin() has user attribute but its value is None.
         if current_user and hasattr(current_user, 'user') and current_user.user:
             user = current_user.user.username
+        # The airflow_login RemoteUser object contains the username attribute
+        elif current_user and hasattr(current_user, 'username'):
+            user = current_user.username
         else:
             user = 'anonymous'
 
