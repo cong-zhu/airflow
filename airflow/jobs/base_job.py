@@ -184,7 +184,13 @@ class BaseJob(Base, LoggingMixin):
                     seconds_remaining = self.heartrate - \
                         (timezone.utcnow() - job.latest_heartbeat)\
                         .total_seconds()
-                    sleep_for = max(0, seconds_remaining)
+                    sleep_for = max(10, seconds_remaining)
+
+                    if seconds_remaining < 10:
+                        self.log.info("heartrate: {}".format(self.heartrate))
+                        self.log.info("job.latest_heartbeat: {}".format(job.latest_heartbeat))
+                else:
+                    self.log.warning("No latest_heartbeat for job {}".format(self.id))
 
                 sleep(sleep_for)
 
