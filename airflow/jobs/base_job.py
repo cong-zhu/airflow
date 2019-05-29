@@ -180,14 +180,25 @@ class BaseJob(Base, LoggingMixin):
             if not is_unit_test:
                 # Figure out how long to sleep for
                 sleep_for = 0
+                # DI-3145, temporarily set a hard lower bound on task heartbeat rate
+                if isinstance(self, LocalTaskJob):
+                    min_heartrate = 10
+                else:
+                    min_heartrate = 0
                 if job.latest_heartbeat:
-                    seconds_remaining = self.heartrate - \
-                        (timezone.utcnow() - job.latest_heartbeat)\
-                        .total_seconds()
-                    sleep_for = max(10, seconds_remaining)
+                    seconds_since_last_heartbeat = (
+                            timezone.utcnow() - job.latest_heartbeat).total_seconds()
+                    seconds_remaining = self.heartrate - seconds_since_last_heartbeat
 
-                    if seconds_remaining < 10:
+                    sleep_for = max(min_heartrate, seconds_remaining)
+
+                    if seconds_since_last_heartbeat + sleep_for < 30:
+                        self.log.info("Job: {}".format(self.id))
                         self.log.info("heartrate: {}".format(self.heartrate))
+                        self.log.info("seconds_since_last_heartbeat: {}".format(
+                            seconds_since_last_heartbeat))
+                        self.log.info("seconds_remaining: {}".format(seconds_remaining))
+                        self.log.info("sleep_for: {}".format(sleep_for))
                         self.log.info("job.latest_heartbeat: {}".format(job.latest_heartbeat))
                 else:
                     self.log.warning("No latest_heartbeat for job {}".format(self.id))
