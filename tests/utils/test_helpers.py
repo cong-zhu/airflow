@@ -23,10 +23,13 @@ import os
 import signal
 import time
 import unittest
+import six
+import mock
+import errno
+
 from datetime import datetime
 
 import psutil
-import six
 
 from airflow import DAG
 from airflow.utils import helpers
@@ -105,6 +108,46 @@ class TestHelpers(unittest.TestCase):
 
             helpers.reap_process_group(parent_pid.value, logging.getLogger(),
                                        timeout=1)
+
+            self.assertFalse(psutil.pid_exists(parent_pid.value))
+            self.assertFalse(psutil.pid_exists(child_pid.value))
+        finally:
+            try:
+                os.kill(parent_pid.value, signal.SIGKILL)  # terminate doesnt work here
+                os.kill(child_pid.value, signal.SIGKILL)  # terminate doesnt work here
+            except OSError:
+                pass
+
+    @mock.patch('os.system', wraps=os.system)
+    @mock.patch('os.killpg')
+    def test_reap_process_group_with_sudo(self, mock_os_killpg, mock_os_system):
+        """
+        Spin up a process that can't be killed without sudo and make sure
+        it gets killed anyway.
+        """
+        parent_setup_done = multiprocessing.Semaphore(0)
+        parent_pid = multiprocessing.Value('i', 0)
+        child_pid = multiprocessing.Value('i', 0)
+        args = [parent_pid, child_pid, parent_setup_done]
+        parent = multiprocessing.Process(target=TestHelpers._parent_of_ignores_sigterm,
+                                         args=args)
+        try:
+            parent.start()
+            self.assertTrue(parent_setup_done.acquire(timeout=5.0))
+            self.assertTrue(psutil.pid_exists(parent_pid.value))
+            self.assertTrue(psutil.pid_exists(child_pid.value))
+
+            os_error = OSError()
+            os_error.errno = errno.EPERM
+            mock_os_killpg.side_effect = os_error
+
+            helpers.reap_process_group(parent_pid.value, logging.getLogger(),
+                                       timeout=1)
+
+            kill_sigterm = "sudo kill -%s -%s" % (signal.SIGTERM, parent_pid.value)
+            kill_sigkill = "sudo kill -%s -%s" % (signal.SIGKILL, parent_pid.value)
+            expected_system_calls = [mock.call(kill_sigterm), mock.call(kill_sigkill)]
+            mock_os_system.assert_has_calls(expected_system_calls)
 
             self.assertFalse(psutil.pid_exists(parent_pid.value))
             self.assertFalse(psutil.pid_exists(child_pid.value))

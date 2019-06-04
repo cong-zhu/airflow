@@ -280,6 +280,18 @@ def pprinttable(rows):
     return s
 
 
+def kill_process_group(pg, sig, log):
+    try:
+        os.killpg(pg, sig)
+    except OSError as e:
+        if e.errno == errno.EPERM:
+            kill_cmd = "sudo kill -%s -%s" % (sig, pg)
+            log.warn("Kill process group with sudo and executing `%s`", kill_cmd)
+            os.system(kill_cmd)
+        else:
+            log.exception(e)
+            raise e
+
 def reap_process_group(pid, log, sig=signal.SIGTERM,
                        timeout=DEFAULT_TIME_TO_WAIT_AFTER_SIGTERM):
     """
@@ -318,17 +330,8 @@ def reap_process_group(pid, log, sig=signal.SIGTERM,
 
     log.debug("I'm process %s, pid to kill is %s", os.getpid(), pid)
     log.info("Sending %s to PGID %s", sig, pg)
-    try:
-        os.killpg(os.getpgid(pid), sig)
-    except OSError as e:
-        if e.errno == 1:
-            kill_cmd = "sudo kill -%s -%s" % (sig, pg)
-            log.warn("Not enough permission to kill, shelling out and executing `%s`",
-                     kill_cmd)
-            os.system(kill_cmd)
-        else:
-            log.exception(e)
-            raise e
+
+    kill_process_group(pg, sig, log)
 
     gone, alive = psutil.wait_procs(children, timeout=timeout, callback=on_terminate)
 
@@ -336,7 +339,7 @@ def reap_process_group(pid, log, sig=signal.SIGTERM,
         for p in alive:
             log.warn("process %s (%s) did not respond to SIGTERM. Trying SIGKILL", p, pid)
 
-        os.killpg(os.getpgid(pid), signal.SIGKILL)
+        kill_process_group(pg, signal.SIGKILL, log)
 
         gone, alive = psutil.wait_procs(alive, timeout=timeout, callback=on_terminate)
         if alive:
