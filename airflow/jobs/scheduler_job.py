@@ -940,7 +940,8 @@ class SchedulerJob(BaseJob):
         for task_instance in task_instances_to_examine:
             pool_to_task_instances[task_instance.pool].append(task_instance)
 
-        states_to_count_as_running = [State.RUNNING, State.QUEUED]
+        # [AIRBNB][DI-3207] not considering QUEUED as running to more aggressively requeue
+        states_to_count_as_running = [State.RUNNING]
         # dag_id to # of running tasks and (dag_id, task_id) to # of running tasks.
         dag_concurrency_map, task_concurrency_map = self.__get_concurrency_maps(
             states=states_to_count_as_running, session=session)

@@ -518,11 +518,14 @@ class SchedulerJobTest(unittest.TestCase):
 
         res = scheduler._find_executable_task_instances(
             dagbag,
-            states=[State.SCHEDULED],
+            states=[State.SCHEDULED, State.QUEUED],
             session=session)
 
-        self.assertEqual(1, len(res))
-        self.assertEqual(res[0].key, ti3.key)
+        # [AIRBNB][DI-3207] not considering QUEUED as running to more aggressively requeue
+        self.assertEqual(2, len(res))
+        res_keys = [r.key for r in res]
+        self.assertIn(ti2.key, res_keys)
+        self.assertIn(ti3.key, res_keys)
 
     def test_find_executable_task_instances_task_concurrency(self):
         dag_id = 'SchedulerJobTest.test_find_executable_task_instances_task_concurrency'
