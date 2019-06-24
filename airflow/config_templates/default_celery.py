@@ -41,15 +41,16 @@ if 'visibility_timeout' not in broker_transport_options:
 
 DEFAULT_CELERY_CONFIG = {
     'accept_content': ['json', 'pickle'],
-    'event_serializer': 'json',
-    'worker_prefetch_multiplier': 1,
-    'task_acks_late': True,
-    'task_default_queue': configuration.conf.get('celery', 'DEFAULT_QUEUE'),
-    'task_default_exchange': configuration.conf.get('celery', 'DEFAULT_QUEUE'),
-    'broker_url': broker_url,
     'broker_transport_options': broker_transport_options,
+    'broker_url': broker_url,
+    'event_serializer': 'json',
     'result_backend': configuration.conf.get('celery', 'RESULT_BACKEND'),
+    'task_acks_late': True,
+    'task_default_exchange': configuration.conf.get('celery', 'DEFAULT_QUEUE'),
+    'task_default_queue': configuration.conf.get('celery', 'DEFAULT_QUEUE'),
     'worker_concurrency': configuration.conf.getint('celery', 'WORKER_CONCURRENCY'),
+    'worker_prefetch_multiplier': 1,
+    'worker_enable_remote_control': configuration.conf.getboolean('celery', 'WORKER_ENABLE_REMOTE_CONTROL'),
 }
 
 celery_ssl_active = False
