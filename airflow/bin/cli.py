@@ -1061,6 +1061,9 @@ def worker(args):
         'autoscale': autoscale,
         'hostname': args.celery_hostname,
         'loglevel': conf.get('core', 'LOGGING_LEVEL'),
+        'without_gossip': args.without_gossip,
+        'without_mingle': args.without_mingle,
+        'without_heartbeat': args.without_heartbeat,
     }
 
     if conf.has_option("celery", "pool"):
@@ -1826,6 +1829,21 @@ class CLIFactory(object):
             type=int,
             help="The number of worker processes",
             default=conf.get('celery', 'worker_concurrency')),
+        'without_gossip': Arg(
+            ("--without_gossip",),
+            help="Don’t subscribe to other workers events.",
+            default=conf.getboolean('celery', 'without_gossip'),
+            action="store_true"),
+        'without_mingle': Arg(
+            ("--without_mingle",),
+            help="Don’t synchronize with other workers at start-up",
+            default=conf.getboolean('celery', 'without_mingle'),
+            action="store_true"),
+        'without_heartbeat': Arg(
+            ("--without_heartbeat",),
+            help="Don’t send event heartbeats.",
+            default=conf.getboolean('celery', 'without_heartbeat'),
+            action="store_true"),
         'celery_hostname': Arg(
             ("-cn", "--celery_hostname"),
             help=("Set the hostname of celery worker "
@@ -2082,7 +2100,8 @@ class CLIFactory(object):
             'func': worker,
             'help': "Start a Celery worker node",
             'args': ('do_pickle', 'queues', 'concurrency', 'celery_hostname',
-                     'pid', 'daemon', 'stdout', 'stderr', 'log_file', 'autoscale'),
+                     'pid', 'daemon', 'stdout', 'stderr', 'log_file', 'autoscale',
+                     'without_gossip', 'without_mingle', 'without_heartbeat'),
         }, {
             'func': flower,
             'help': "Start a Celery Flower",
