@@ -23,6 +23,7 @@ import os
 import uuid
 
 from cgroupspy import trees
+from retrying import retry
 import psutil
 
 from airflow.task.task_runner.base_task_runner import BaseTaskRunner
@@ -69,6 +70,16 @@ class CgroupTaskRunner(BaseTaskRunner):
         self._created_mem_cgroup = False
         self._cur_user = getpass.getuser()
 
+    @retry(stop_max_attempt_number=3, wait_random_min=500, wait_random_max=1000)
+    def _build_tree(self):
+        """
+        retry 3 times in case of the failure due to the race condition when another
+        process is deleting a cgroup.
+        :retry: 3 times with 0.5 - 1 second delay
+        :return: cgroupspy.nodes.Node
+        """
+        return trees.Tree().root
+
     def _create_cgroup(self, path):
         """
         Create the specified cgroup.
@@ -78,7 +89,7 @@ class CgroupTaskRunner(BaseTaskRunner):
         :return: the Node associated with the created cgroup.
         :rtype: cgroupspy.nodes.Node
         """
-        node = trees.Tree().root
+        node = self._build_tree()
         path_split = path.split(os.sep)
         for path_element in path_split:
             # node.name is encoded to bytes:
@@ -102,7 +113,7 @@ class CgroupTaskRunner(BaseTaskRunner):
         :param path: The path of the cgroup to delete.
         E.g. cpu/mygroup/mysubgroup
         """
-        node = trees.Tree().root
+        node = self._build_tree()
         path_split = path.split("/")
         for path_element in path_split:
             name_to_node = {x.name.decode(): x for x in node.children}

@@ -518,12 +518,15 @@ def run(args, dag=None):
     hostname = get_hostname()
     log.info("Running %s on host %s", ti, hostname)
 
-    if args.interactive:
-        _run(args, dag, ti)
-    else:
-        with redirect_stdout(ti.log, logging.INFO), redirect_stderr(ti.log, logging.WARN):
+    try:
+        if args.interactive:
             _run(args, dag, ti)
-    logging.shutdown()
+        else:
+            with redirect_stdout(ti.log, logging.INFO), redirect_stderr(ti.log, logging.WARN):
+                _run(args, dag, ti)
+    finally:
+        # Make sure the logging shutdown will always be executed.
+        logging.shutdown()
 
 
 @cli_utils.action_logging
