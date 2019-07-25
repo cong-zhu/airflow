@@ -1537,7 +1537,8 @@ class TestDagACLView(TestBase):
 
     def test_failed_success(self):
         self.logout()
-        self.login()
+        self.login(username="dag_faker",
+                   password="dag_faker")
         form = dict(
             task_id="run_this_last",
             dag_id="example_bash_operator",

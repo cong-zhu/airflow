@@ -102,13 +102,18 @@ VIEWER_PERMS = {
 
 USER_PERMS = {
     'can_dagrun_clear',
+    'can_dagrun_failed',
+    'can_dagrun_success',
     'can_run',
     'can_trigger',
+    'can_get_logs_with_metadata',
     'can_add',
     'can_edit',
     'can_delete',
+    'can_clear',
     'can_paused',
     'can_refresh',
+    'can_failed',
     'can_success',
     'muldelete',
     'set_failed',
