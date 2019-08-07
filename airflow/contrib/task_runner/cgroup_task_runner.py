@@ -127,6 +127,19 @@ class CgroupTaskRunner(BaseTaskRunner):
         self.log.debug("Deleting cgroup %s/%s", parent, node.name)
         parent.delete_cgroup(node.name.decode())
 
+    def _print_memory_usage(self, mem_cgroup_node):
+        def byte_to_gb(num_bytes, precision=2):
+            return round(num_bytes / (1024.0 * 1024 * 1024), precision)
+
+        with open(mem_cgroup_node.full_path + '/memory.max_usage_in_bytes') as f:
+            max_usage_in_bytes = int(f.read().strip())
+
+        self.log.info(
+            "Memory max usage of the task is %s GB, while the memory limit is %s GB",
+            byte_to_gb(max_usage_in_bytes),
+            byte_to_gb(mem_cgroup_node.controller.limit_in_bytes)
+        )
+
     def start(self):
         # Use bash if it's already in a cgroup
         cgroups = self._get_cgroup_names()
@@ -156,14 +169,14 @@ class CgroupTaskRunner(BaseTaskRunner):
         self._mem_mb_limit = resources.ram.qty
 
         # Create the memory cgroup
-        mem_cgroup_node = self._create_cgroup(self.mem_cgroup_name)
+        self.mem_cgroup_node = self._create_cgroup(self.mem_cgroup_name)
         self._created_mem_cgroup = True
         if self._mem_mb_limit > 0:
             self.log.debug(
                 "Setting %s with %s MB of memory",
                 self.mem_cgroup_name, self._mem_mb_limit
             )
-            mem_cgroup_node.controller.limit_in_bytes = self._mem_mb_limit * 1024 * 1024
+            self.mem_cgroup_node.controller.limit_in_bytes = self._mem_mb_limit * 1024 * 1024
 
         # Create the CPU cgroup
         cpu_cgroup_node = self._create_cgroup(self.cpu_cgroup_name)
@@ -209,6 +222,7 @@ class CgroupTaskRunner(BaseTaskRunner):
         self._finished_running = True
         # Clean up the cgroups
         if self._created_mem_cgroup:
+            self._print_memory_usage(self.mem_cgroup_node)
             self._delete_cgroup(self.mem_cgroup_name)
         if self._created_cpu_cgroup:
             self._delete_cgroup(self.cpu_cgroup_name)
