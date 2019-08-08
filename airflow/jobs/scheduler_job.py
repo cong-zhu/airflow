@@ -982,11 +982,16 @@ class SchedulerJob(BaseJob):
                         continue
 
                 if self.executor.has_task(task_instance):
+                    '''
                     self.log.debug(
                         "Not handling task %s as the executor reports it is running",
                         task_instance.key
                     )
                     continue
+                    '''
+                    self.log.error(
+                        "Executor is aware of {}, but executing anyway".format(
+                            task_instance.key))
                 executable_tis.append(task_instance)
                 open_slots -= 1
                 dag_concurrency_map[dag_id] += 1
@@ -1401,7 +1406,7 @@ class SchedulerJob(BaseJob):
                                                               State.NONE)
 
                     self._execute_task_instances(simple_dag_bag,
-                                                 (State.SCHEDULED,))
+                                                 (State.SCHEDULED, State.QUEUED))
                 except Exception as e:
                     self.log.error("Error queuing tasks")
                     self.log.exception(e)
