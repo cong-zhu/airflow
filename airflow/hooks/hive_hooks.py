@@ -773,40 +773,79 @@ class HiveServer2Hook(BaseHook):
     are using impala you may need to set it to false in the
     ``extra`` of your connection in the UI
     """
-    def __init__(self, hiveserver2_conn_id='hiveserver2_default'):
+    def __init__(self, hiveserver2_conn_id='hiveserver2_default', run_as_user=None):
         self.hiveserver2_conn_id = hiveserver2_conn_id
+        # [AIRBNB]
+        # IMPORTANT AIRBNB, the constructor has diverged from the open-source version.
+        # run_as_user was added so that the HiveServer2 connection would use it without
+        # any authentication.
+        self.run_as_user = run_as_user
 
     def get_conn(self, schema=None):
         """
-        Returns a Hive connection object.
+        :param schema: Database schema, defaults to "default"
+        :return: HiveServer2 Connection object
         """
+        # [AIRBNB]
+        # IMPORTANT AIRBNB, this entire function has diverged from the open-source version
+        # to temporarily use the run_as_user as the HiveServer2 user.
+        # In the future, we will want to enable either LDAP or Kerberos (most likely)
+
         db = self.get_connection(self.hiveserver2_conn_id)
         auth_mechanism = db.extra_dejson.get('authMechanism', 'NONE')
         if auth_mechanism == 'NONE' and db.login is None:
             # we need to give a username
             username = 'airflow'
         kerberos_service_name = None
-        if configuration.conf.get('core', 'security') == 'kerberos':
+        # Other option for owner_type is "login"
+        owner_type = db.extra_dejson.get('proxy_user', 'owner')
+
+        effective_user = None
+        if owner_type.lower().strip() == "owner" and self.run_as_user:
+            effective_user = self.run_as_user
+        elif owner_type.lower().strip() == "login" and db.login:
+            effective_user = db.login
+        else:
+            effective_user = self.run_as_user if self.run_as_user else (
+                db.login if db.login else "anonymous")
+
+        if configuration.conf.get('core', 'security').upper() == 'KERBEROS':
             auth_mechanism = db.extra_dejson.get('authMechanism', 'KERBEROS')
             kerberos_service_name = db.extra_dejson.get('kerberos_service_name', 'hive')
 
-        # pyhive uses GSSAPI instead of KERBEROS as a auth_mechanism identifier
-        if auth_mechanism == 'GSSAPI':
-            self.log.warning(
-                "Detected deprecated 'GSSAPI' for authMechanism "
-                "for %s. Please use 'KERBEROS' instead",
-                self.hiveserver2_conn_id
-            )
-            auth_mechanism = 'KERBEROS'
-
         from pyhive.hive import connect
-        return connect(
-            host=db.host,
-            port=db.port,
-            auth=auth_mechanism,
-            kerberos_service_name=kerberos_service_name,
-            username=db.login or username,
-            database=schema or db.schema or 'default')
+        if auth_mechanism.upper() == "LDAP":
+            # This should require a username and password to authenticate with
+            # that comes from the connection object, i.e., db.login
+            # Optionally, it can provide a run_as to be set in hive.server2.proxy.user
+            kerberos_service_name = None
+            return connect(
+                host=db.host,
+                port=db.port,
+                auth_mechanism=auth_mechanism,
+                kerberos_service_name=kerberos_service_name,
+                user=db.login or username,
+                database=schema or db.schema or 'default')
+        else:
+            # pyhive uses GSSAPI instead of KERBEROS as a auth_mechanism identifier
+            if auth_mechanism == 'GSSAPI':
+                self.log.warning(
+                    "Detected deprecated 'GSSAPI' for authMechanism "
+                    "for %s. Please use 'KERBEROS' instead",
+                    self.hiveserver2_conn_id
+                )
+                auth_mechanism = 'KERBEROS'
+            # [AIRBNB]
+            # Custom change for Airbnb. Without authentication in HiveServer2,
+            # take the effective username instead.
+
+            return connect(
+                host=db.host,
+                port=db.port,
+                auth=auth_mechanism,
+                kerberos_service_name=kerberos_service_name,
+                username=effective_user,
+                database=schema or db.schema or 'default')
 
     def _get_results(self, hql, schema='default', fetch_size=None, hive_conf=None):
         from pyhive.exc import ProgrammingError
