@@ -29,6 +29,7 @@ import textwrap
 import zipfile
 from collections import namedtuple
 from datetime import datetime, timedelta
+import time
 
 import six
 from croniter import croniter, CroniterBadCronError, CroniterBadDateError, CroniterNotAlphaError
@@ -292,18 +293,25 @@ class DagBag(BaseDagBag, LoggingMixin):
             seconds=zombie_threshold_secs)
         self.log.debug("Failing jobs without heartbeat after %s", limit_dttm)
 
-        tis = (
-            session.query(TI)
-            .join(LJ, TI.job_id == LJ.id)
-            .filter(TI.state == State.RUNNING)
-            .filter(TI.dag_id.in_(self.dags))
-            .filter(
-                or_(
-                    LJ.state != State.RUNNING,
-                    LJ.latest_heartbeat < limit_dttm,
-                )
-            ).all()
-        )
+        try:
+            query_start_at = time.time()
+            tis = (
+                session.query(TI)
+                .join(LJ, TI.job_id == LJ.id)
+                .filter(TI.state == State.RUNNING)
+                .filter(TI.dag_id.in_(self.dags))
+                .filter(
+                    or_(
+                        LJ.state != State.RUNNING,
+                        LJ.latest_heartbeat < limit_dttm,
+                    )
+                ).all()
+            )
+        except Exception:
+            msg = "Failed to get zombies after {} s".format(time.time() - query_start_at)
+            self.log.exception(msg, exc_info=True)
+            tis = []
+
         for ti in tis:
             self.log.info("Detected zombie job with dag_id %s, task_id %s, and execution date %s",
                           ti.dag_id, ti.task_id, ti.execution_date.isoformat())
