@@ -590,11 +590,11 @@ def next_execution(args):
     """
     dag = get_dag(args)
 
-    if dag.is_paused:
+    if dag.is_paused():
         print("[INFO] Please be reminded this DAG is PAUSED now.")
 
-    if dag.latest_execution_date:
-        next_execution_dttm = dag.following_schedule(dag.latest_execution_date)
+    if dag.latest_execution_date():
+        next_execution_dttm = dag.following_schedule(dag.latest_execution_date())
 
         if next_execution_dttm is None:
             print("[WARN] No following schedule can be found. " +

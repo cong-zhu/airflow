@@ -64,13 +64,19 @@ if [ -z "$nose_args" ]; then
 fi
 
 # to parallel
-if [ "$JORB_JOB_INDEX" -eq 0 ]; then
-  nose_args="${nose_args} -s tests/jobs.py"
+if [ -z "$JORB_JOB_INDEX" ]; then
+    echo "non jorb job"
+elif [ "$JORB_JOB_INDEX" -eq 0 ]; then
+  nose_args="${nose_args} -s tests/jobs/ tests/operators/ tests/hooks/ tests/sensors/"
 elif [ "$JORB_JOB_INDEX" -eq 1 ]; then
-  nose_args="${nose_args} -s tests/www_rbac/"
-else
+  nose_args="${nose_args} -s tests/contrib/ tests/www_rbac/"
+elif [ "$JORB_JOB_INDEX" -eq 2 ]; then
   echo "rm some files"
-  sudo rm -f $ROOTDIR/tests/jobs.py*
+  sudo rm -rf $ROOTDIR/tests/contrib/
+  sudo rm -rf $ROOTDIR/tests/hooks/
+  sudo rm -rf $ROOTDIR/tests/sensors/
+  sudo rm -rf $ROOTDIR/tests/jobs/
+  sudo rm -rf $ROOTDIR/tests/operators/
   sudo rm -rf $ROOTDIR/tests/www_rbac/
 fi
 
@@ -89,5 +95,9 @@ nosetests $nose_args
 result=$?
 
 ps aux | grep webserver | awk '{ print $2 }' | xargs kill -9
+
+echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxx To Search Failed Tests xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
+echo "Please search ') FAIL: 'or ') ERROR: ' for failed tests"
+echo "xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx"
 
 exit $result

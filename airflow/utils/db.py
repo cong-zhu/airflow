@@ -108,7 +108,7 @@ def initdb(rbac=False):
     merge_conn(
         Connection(
             conn_id='airflow_db', conn_type='mysql',
-            host='mysql', login='root', password='',
+            host='localhost', login='root', password='',
             schema='airflow'))
     merge_conn(
         Connection(
@@ -154,20 +154,20 @@ def initdb(rbac=False):
     merge_conn(
         Connection(
             conn_id='mongo_default', conn_type='mongo',
-            host='mongo', port=27017))
+            host='localhost', port=27017))
     merge_conn(
         Connection(
             conn_id='mysql_default', conn_type='mysql',
             login='root',
             schema='airflow',
-            host='mysql'))
+            host='localhost'))
     merge_conn(
         Connection(
             conn_id='postgres_default', conn_type='postgres',
             login='postgres',
             password='airflow',
             schema='airflow',
-            host='postgres'))
+            host='localhost'))
     merge_conn(
         Connection(
             conn_id='sqlite_default', conn_type='sqlite',
@@ -226,7 +226,7 @@ def initdb(rbac=False):
     merge_conn(
         Connection(
             conn_id='redis_default', conn_type='redis',
-            host='redis', port=6379,
+            host='localhost', port=6379,
             extra='{"db": 0}'))
     merge_conn(
         Connection(

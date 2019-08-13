@@ -45,10 +45,12 @@ class TestDeleteDAGCatchError(unittest.TestCase):
     def tearDown(self):
         self.dag.clear()
 
+    @unittest.skip("Disable delete_dag")
     def test_delete_dag_non_existent_dag(self):
         with self.assertRaises(DagNotFound):
             delete_dag("non-existent DAG")
 
+    @unittest.skip("Disable delete_dag")
     def test_delete_dag_dag_still_in_dagbag(self):
         with create_session() as session:
             models_to_check = ['DagModel', 'DagRun', 'TaskInstance']
@@ -109,6 +111,7 @@ class TestDeleteDAGSuccessfulDelete(unittest.TestCase):
             session.query(DM).filter(DM.dag_id == self.key).delete()
             session.query(LOG).filter(LOG.dag_id == self.key).delete()
 
+    @unittest.skip("Disable delete_dag")
     def test_delete_dag_successful_delete(self):
         with create_session() as session:
             self.assertEqual(session.query(DM).filter(DM.dag_id == self.key).count(), 1)
@@ -128,6 +131,7 @@ class TestDeleteDAGSuccessfulDelete(unittest.TestCase):
             self.assertEqual(session.query(TR).filter(TR.dag_id == self.key).count(), 0)
             self.assertEqual(session.query(LOG).filter(LOG.dag_id == self.key).count(), 1)
 
+    @unittest.skip("Disable delete_dag")
     def test_delete_dag_successful_delete_not_keeping_records_in_log(self):
 
         with create_session() as session:

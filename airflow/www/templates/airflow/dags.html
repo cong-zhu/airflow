@@ -74,7 +74,12 @@
 
                 <!-- Column 2: Turn dag on/off -->
                 <td>
-                  <input id="toggle-{{ dag.dag_id }}" dag_id="{{ dag.dag_id }}" type="checkbox" {{ "checked" if not dag.is_paused else "" }} data-toggle="toggle" data-size="mini" method="post">
+                  <!-- since is_paused is a method in Dag however is_paused is an attribute in DagModel -->
+                  {% if dag.is_paused is callable %}
+                    <input id="toggle-{{ dag.dag_id }}" dag_id="{{ dag.dag_id }}" type="checkbox" {{ "checked" if not dag.is_paused() else "" }} data-toggle="toggle" data-size="mini" method="post">
+                  {% else %}
+                    <input id="toggle-{{ dag.dag_id }}" dag_id="{{ dag.dag_id }}" type="checkbox" {{ "checked" if not dag.is_paused else "" }} data-toggle="toggle" data-size="mini" method="post">
+                  {% endif %}
                 </td>
 
                 <!-- Column 3: Name -->

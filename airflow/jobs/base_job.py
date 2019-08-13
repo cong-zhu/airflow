@@ -181,6 +181,7 @@ class BaseJob(Base, LoggingMixin):
                 # Figure out how long to sleep for
                 sleep_for = 0
                 # DI-3145, temporarily set a hard lower bound on task heartbeat rate
+                from airflow.jobs.local_task_job import LocalTaskJob  # noqa: F401
                 if isinstance(self, LocalTaskJob):
                     min_heartrate = 10
                 else:

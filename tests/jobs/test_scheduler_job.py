@@ -635,7 +635,8 @@ class SchedulerJobTest(unittest.TestCase):
             states=[State.SCHEDULED, State.QUEUED],
             session=session)
 
-        self.assertEqual(1, len(res))
+        # [AIRBNB][DI-3207] not considering QUEUED as running to more aggressively requeue
+        self.assertEqual(2, len(res))
 
     def test_change_state_for_executable_task_instances_no_tis(self):
         scheduler = SchedulerJob()
