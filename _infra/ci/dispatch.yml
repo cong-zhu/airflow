@@ -11,4 +11,4 @@ jobs:
   - name: Upload to artifactory
     path: _infra/ci/jobs/upload_package.yml
     options:
-       only_run_if: "env('JORB_GIT_BRANCH') == env('JORB_GIT_DEFAULT_BRANCH') || env('JORB_GIT_BRANCH') == 'rb1.10.0'"
+       only_run_if: "env('JORB_GIT_BRANCH') == 'rb1.10.4' || env('JORB_GIT_BRANCH') == 'rb1.10.0'"

@@ -141,7 +141,7 @@ class HiveOperatorTest(HiveEnvironmentTest):
     def test_mapred_job_name(self, mock_get_hook):
         mock_hook = mock.MagicMock()
         mock_get_hook.return_value = mock_hook
-        t = HiveOperator(
+        t = airflow.operators.hive_operator.HiveOperator(
             task_id='test_mapred_job_name',
             hql=self.hql,
             dag=self.dag)

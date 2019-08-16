@@ -31,6 +31,7 @@ from flask_appbuilder.views import ModelView, BaseView
 
 from sqlalchemy import Column, Integer, String, Date, Float
 
+from airflow import configuration as conf
 from airflow.www_rbac.security import AirflowSecurityManager, DAG_PERMS
 
 
@@ -68,7 +69,7 @@ class SomeBaseView(BaseView):
 class TestSecurity(unittest.TestCase):
     def setUp(self):
         self.app = Flask(__name__)
-        self.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'
+        self.app.config['SQLALCHEMY_DATABASE_URI'] = conf.get('core', 'SQL_ALCHEMY_CONN')
         self.app.config['SECRET_KEY'] = 'secret_key'
         self.app.config['CSRF_ENABLED'] = False
         self.app.config['WTF_CSRF_ENABLED'] = False

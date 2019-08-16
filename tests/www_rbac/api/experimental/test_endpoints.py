@@ -37,7 +37,7 @@ class TestBase(unittest.TestCase):
     def setUp(self):
         conf.load_test_config()
         self.app, self.appbuilder = application.create_app(session=Session, testing=True)
-        self.app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///'
+        self.app.config['SQLALCHEMY_DATABASE_URI'] = conf.get('core', 'SQL_ALCHEMY_CONN')
         self.app.config['SECRET_KEY'] = 'secret_key'
         self.app.config['CSRF_ENABLED'] = False
         self.app.config['WTF_CSRF_ENABLED'] = False

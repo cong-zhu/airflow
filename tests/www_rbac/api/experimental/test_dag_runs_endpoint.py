@@ -39,7 +39,7 @@ class TestDagRunsEndpoint(unittest.TestCase):
     def setUp(self):
         super(TestDagRunsEndpoint, self).setUp()
         configuration.load_test_config()
-        app, _ = application.create_app(testing=True)
+        app, _ = application.create_app(session=Session, testing=True)
         self.app = app.test_client()
 
     def tearDown(self):
