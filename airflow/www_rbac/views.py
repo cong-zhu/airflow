@@ -34,9 +34,8 @@ from six.moves.urllib.parse import quote
 import markdown
 import pendulum
 import sqlalchemy as sqla
-from flask import (
-    redirect, request, Markup, Response, render_template,
-    make_response, flash, jsonify, url_for, g)
+from flask import (Markup, Response, flash, jsonify, make_response, redirect,
+                   render_template, request, url_for)
 from flask._compat import PY2
 from flask_appbuilder import BaseView, ModelView, expose, has_access
 from flask_appbuilder.actions import action
@@ -55,7 +54,7 @@ from airflow import settings
 from airflow.api.common.experimental.mark_tasks import (set_dag_run_state_to_success,
                                                         set_dag_run_state_to_failed)
 from airflow.models import Connection, DagModel, DagRun, errors, Log, SlaMiss, TaskFail, XCom
-from airflow.ti_deps.dep_context import DepContext, QUEUE_DEPS, SCHEDULER_DEPS
+from airflow.ti_deps.dep_context import DepContext, SCHEDULER_QUEUED_DEPS
 from airflow.utils import timezone
 from airflow.utils.dates import infer_time_unit, scale_time_units
 from airflow.utils.db import provide_session
@@ -65,9 +64,9 @@ from airflow._vendor import nvd3
 from airflow.www_rbac import utils as wwwutils
 from airflow.www_rbac.app import app, appbuilder
 from airflow.www_rbac.decorators import action_logging, gzipped, has_dag_access
-from airflow.www_rbac.forms import (DateTimeForm, DateTimeWithNumRunsForm,
-                                    DateTimeWithNumRunsWithDagRunsForm,
-                                    DagRunForm, ConnectionForm)
+from airflow.www_rbac.forms import (ConnectionForm, DagRunForm, DateTimeForm,
+                               DateTimeWithNumRunsForm,
+                               DateTimeWithNumRunsWithDagRunsForm)
 from airflow.www_rbac.widgets import AirflowModelListWidget
 
 
@@ -722,7 +721,7 @@ class Airflow(AirflowBaseView):
                 "(e.g. cleared in the UI)<br/>" if ti.state == State.NONE else ""))]
 
         # Use the scheduler's context to figure out which dependencies are not met
-        dep_context = DepContext(SCHEDULER_DEPS)
+        dep_context = DepContext(SCHEDULER_QUEUED_DEPS)
         failed_dep_reasons = [(dep.dep_name, dep.reason) for dep in
                               ti.get_failed_dep_statuses(
                                   dep_context=dep_context)]
@@ -828,7 +827,7 @@ class Airflow(AirflowBaseView):
 
         # Make sure the task instance can be queued
         dep_context = DepContext(
-            deps=QUEUE_DEPS,
+            deps=SCHEDULER_QUEUED_DEPS,
             ignore_all_deps=ignore_all_deps,
             ignore_task_deps=ignore_task_deps,
             ignore_ti_state=ignore_ti_state)
