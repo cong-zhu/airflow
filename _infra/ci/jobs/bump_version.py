@@ -8,14 +8,13 @@ current_short_sha = current_short_sha.strip()
 print('current_short_sha', current_short_sha)
 
 dir_path = os.path.dirname(os.path.realpath(__file__))
-verion_file = dir_path + '/' + '../../../airflow/version.py'
+version_file = dir_path + '/' + '../../../airflow/version.py'
 
-version_module = imp.load_source('version', verion_file)
+version_module = imp.load_source('version', version_file)
 version = version_module.version
 new_version = version + '-' + str(current_short_sha)
 
 new_version_str = "version = '{}'".format(new_version)
 print('new_version:', new_version)
-with open(verion_file, 'w') as f:
+with open(version_file, 'w') as f:
     f.write(new_version_str)
-

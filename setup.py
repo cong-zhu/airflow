@@ -111,24 +111,10 @@ def git_version(version_):
     :rtype: str
     """
     try:
-        import git
-        try:
-            repo = git.Repo('.git')
-        except git.NoSuchPathError:
-            logger.warning('.git directory not found: Cannot compute the git version')
-            return ''
-    except ImportError:
-        logger.warning('gitpython not found: Cannot compute the git version.')
+        return subprocess.check_output('git rev-parse HEAD'.split(' ')).strip()
+    except Exception as e:
+        logger.warning('Cannot compute the git version. {}'.format(e))
         return ''
-    if repo:
-        sha = repo.head.commit.hexsha
-        if repo.is_dirty():
-            return '.dev0+{sha}.dirty'.format(sha=sha)
-        # commit is clean
-        return '.release:{version}+{sha}'.format(version=version_, sha=sha)
-    else:
-        return 'no_git_version'
-
 
 def write_version(filename=os.path.join(*["airflow", "git_version"])):
     """
