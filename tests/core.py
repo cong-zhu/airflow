@@ -1818,6 +1818,7 @@ class WebUiTests(unittest.TestCase):
         self.sub_dag = self.dagbag.dags['example_subdag_operator']
         self.runme_0 = self.dag_bash.get_task('runme_0')
         self.example_xcom = self.dagbag.dags['example_xcom']
+        self.test_task_view_type_check = self.dagbag.dags['test_task_view_type_check']
 
         session = Session()
         session.query(models.DagRun).delete()
@@ -1827,6 +1828,20 @@ class WebUiTests(unittest.TestCase):
 
         self.dagrun_python = self.dag_python.create_dagrun(
             run_id="test_{}".format(models.DagRun.id_for_date(timezone.utcnow())),
+            execution_date=EXAMPLE_DAG_DEFAULT_DATE,
+            start_date=timezone.utcnow(),
+            state=State.RUNNING
+        )
+
+        self.test_task_view_type_check.create_dagrun(
+            run_id="test_task_view_type_check",
+            execution_date=EXAMPLE_DAG_DEFAULT_DATE,
+            start_date=timezone.utcnow(),
+            state=State.RUNNING
+        )
+
+        self.dag_bash.create_dagrun(
+            run_id="example_bash_operator",
             execution_date=EXAMPLE_DAG_DEFAULT_DATE,
             start_date=timezone.utcnow(),
             state=State.RUNNING
