@@ -193,7 +193,6 @@ class ElasticsearchTaskHandler(FileTaskHandler, LoggingMixin):
         Provide task_instance context to airflow task handler.
         :param ti: task instance object
         """
-        super(ElasticsearchTaskHandler, self).set_context(ti)
         self.mark_end_on_close = not ti.raw
 
         if self.write_stdout:
