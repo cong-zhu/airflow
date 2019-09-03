@@ -95,6 +95,10 @@ class DbTest(unittest.TestCase):
             # from test_security unit test
             lambda t: (t[0] == 'remove_table' and
                        t[1].name == 'some_model'),
+
+            # Ignore dag_stats table
+            lambda t: (t[0] == 'remove_table' and
+                       t[1].name == 'dag_stats'),
         ]
         for ignore in ignores:
             diff = [d for d in diff if not ignore(d)]
