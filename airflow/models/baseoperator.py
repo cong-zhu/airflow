@@ -278,6 +278,7 @@ class BaseOperator(LoggingMixin):
         dag=None,  # type: Optional[DAG]
         params=None,  # type: Optional[Dict]
         default_args=None,  # type: Optional[Dict]
+        adhoc=False, # type: Optional[bool] # for backward compatibility, 1.10.0
         priority_weight=1,  # type: int
         weight_rule=WeightRule.DOWNSTREAM,  # type: str
         queue=configuration.conf.get('celery', 'default_queue'),  # type: str
@@ -364,6 +365,8 @@ class BaseOperator(LoggingMixin):
         self.retry_exponential_backoff = retry_exponential_backoff
         self.max_retry_delay = max_retry_delay
         self.params = params or {}  # Available in templates!
+        # for backward compatibility to 1.10.0
+        self.adhoc = adhoc
         self.priority_weight = priority_weight
         if not WeightRule.is_valid(weight_rule):
             raise AirflowException(
