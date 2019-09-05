@@ -1312,13 +1312,21 @@ class SchedulerJob(BaseJob):
                         dagbag = models.DagBag(simple_dag.full_filepath)
                         dag = dagbag.get_dag(dag_id)
                         ti.task = dag.get_task(task_id)
-                        ti.handle_failure(msg)
+                        # [AIRBNB] To avoid requeued task instance updating the state at the same time.
+                        # If the state is updated, abort the executor event handling.
+                        ti.refresh_from_db(lock_for_update=True)
+                        if ti.state == State.QUEUED:
+                            ti.handle_failure(msg)
+                        else:
+                            self.log.warning("State of task instance {} is changed to {},"
+                                             " skipping failure handling".format(ti, ti.state))
                     except Exception:
                         self.log.error("Cannot load the dag bag to handle failure for %s"
                                        ". Setting task to FAILED without callbacks or "
                                        "retries. Do you have enough resources?", ti)
                         ti.state = State.FAILED
                         session.merge(ti)
+                    finally:
                         session.commit()
 
     def _execute(self):
