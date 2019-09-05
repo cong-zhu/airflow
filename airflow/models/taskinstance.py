@@ -1059,6 +1059,11 @@ class TaskInstance(Base, LoggingMixin):
             if self.is_eligible_to_retry():
                 self.state = State.UP_FOR_RETRY
                 self.log.info('Marking task as UP_FOR_RETRY')
+                # [AIRBNB] To minimize the time this task instance row is locked in the DB
+                if not test_mode:
+                    session.merge(self)
+                session.commit()
+
                 if task.email_on_retry and task.email:
                     self.email_alert(error)
             else:
@@ -1067,6 +1072,11 @@ class TaskInstance(Base, LoggingMixin):
                     self.log.info('All retries failed; marking task as FAILED')
                 else:
                     self.log.info('Marking task as FAILED.')
+                # [AIRBNB] To minimize the time this task instance row is locked in the DB
+                if not test_mode:
+                    session.merge(self)
+                session.commit()
+
                 if task.email_on_failure and task.email:
                     self.email_alert(error)
         except Exception as e2:
@@ -1083,9 +1093,6 @@ class TaskInstance(Base, LoggingMixin):
             self.log.error("Failed at executing callback")
             self.log.exception(e3)
 
-        if not test_mode:
-            session.merge(self)
-        session.commit()
 
     def is_eligible_to_retry(self):
         """Is task instance is eligible for retry"""
