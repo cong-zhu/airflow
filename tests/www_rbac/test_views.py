@@ -520,11 +520,11 @@ class TestAirflowBaseViews(TestBase):
         self.assertEqual(200, resp.status_code)
 
     def test_dag_stats(self):
-        resp = self.client.get('dag_stats', follow_redirects=True)
+        resp = self.client.post('dag_stats', follow_redirects=True)
         self.assertEqual(resp.status_code, 200)
 
     def test_task_stats(self):
-        resp = self.client.get('task_stats', follow_redirects=True)
+        resp = self.client.post('task_stats', follow_redirects=True)
         self.assertEqual(resp.status_code, 200)
 
     def test_dag_details(self):
@@ -1316,40 +1316,52 @@ class TestDagACLView(TestBase):
     def test_dag_stats_success(self):
         self.logout()
         self.login()
-        resp = self.client.get('dag_stats', follow_redirects=True)
+        resp = self.client.post('dag_stats',
+                json={'dag_ids': ['example_bash_operator']},
+                follow_redirects=True)
         self.check_content_in_response('example_bash_operator', resp)
 
     def test_dag_stats_failure(self):
         self.logout()
         self.login()
-        resp = self.client.get('dag_stats', follow_redirects=True)
+        resp = self.client.post('dag_stats',
+                json={'dag_ids': ['example_subdag_operator']},
+                follow_redirects=True)
         self.check_content_not_in_response('example_subdag_operator', resp)
 
     def test_dag_stats_success_for_all_dag_user(self):
         self.logout()
         self.login(username='all_dag_user',
                    password='all_dag_user')
-        resp = self.client.get('dag_stats', follow_redirects=True)
+        resp = self.client.post('dag_stats',
+                json={'dag_ids': ['example_subdag_operator', 'example_bash_operator']},
+                follow_redirects=True)
         self.check_content_in_response('example_subdag_operator', resp)
         self.check_content_in_response('example_bash_operator', resp)
 
     def test_task_stats_success(self):
         self.logout()
         self.login()
-        resp = self.client.get('task_stats', follow_redirects=True)
+        resp = self.client.post('task_stats',
+                json={'dag_ids': ['example_bash_operator']},
+                follow_redirects=True)
         self.check_content_in_response('example_bash_operator', resp)
 
     def test_task_stats_failure(self):
         self.logout()
         self.login()
-        resp = self.client.get('task_stats', follow_redirects=True)
+        resp = self.client.post('task_stats',
+                json={'dag_ids': ['example_subdag_operator']},
+                follow_redirects=True)
         self.check_content_not_in_response('example_subdag_operator', resp)
 
     def test_task_stats_success_for_all_dag_user(self):
         self.logout()
         self.login(username='all_dag_user',
                    password='all_dag_user')
-        resp = self.client.get('task_stats', follow_redirects=True)
+        resp = self.client.post('task_stats',
+                json={'dag_ids': ['example_subdag_operator', 'example_bash_operator']},
+                follow_redirects=True)
         self.check_content_in_response('example_bash_operator', resp)
         self.check_content_in_response('example_subdag_operator', resp)
 

@@ -305,7 +305,13 @@
           }
         });
       });
-      d3.json("{{ url_for('Airflow.dag_stats') }}", function(error, json) {
+      var dag_ids = [
+        {% for dag in dags %} "{{dag.dag_id}}", {% endfor %}
+      ];
+      d3.json("{{ url_for('Airflow.dag_stats') }}")
+          .header("Content-Type", "application/json")
+          .header("X-CSRF-Token", '{{ csrf_token() }}')
+          .post(JSON.stringify({dag_ids: dag_ids}), function(error, json) {
         for(var dag_id in json) {
             states = json[dag_id];
             g = d3.select('svg#dag-run-' + dag_id.replace(/\./g, '__dot__'))
@@ -381,7 +387,10 @@
           container: "body",
         });
       });
-      d3.json("{{ url_for('Airflow.task_stats') }}", function(error, json) {
+      d3.json("{{ url_for('Airflow.task_stats') }}")
+          .header("Content-Type", "application/json")
+          .header("X-CSRF-Token", '{{ csrf_token() }}')
+          .post(JSON.stringify({dag_ids: dag_ids}), function(error, json) {
         for(var dag_id in json) {
             states = json[dag_id];
             g = d3.select('svg#task-run-' + dag_id.replace(/\./g, '__dot__'))
