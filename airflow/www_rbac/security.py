@@ -24,6 +24,7 @@ from flask import g
 from flask_appbuilder.security.sqla import models as sqla_models
 from flask_appbuilder.security.sqla.manager import SecurityManager
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from airflow import models
 from airflow.www_rbac.app import appbuilder
@@ -491,7 +492,10 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
         # init existing roles, the rest role could be created through UI.
         self.update_admin_perm_view()
         self.sync_lookup_table()
-        self.clean_perms()
+        try:
+            self.clean_perms()
+        except IntegrityError:
+            logging.info('Failed to clean  perms')
 
     def sync_lookup_table(self):
         ab_perm_view_role = sqla_models.assoc_permissionview_role
