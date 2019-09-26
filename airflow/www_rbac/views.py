@@ -24,6 +24,7 @@ import json
 import logging
 import math
 import os
+import re
 import socket
 import traceback
 from collections import defaultdict
@@ -135,7 +136,57 @@ def get_date_time_num_runs_dag_runs_form_data(request, session, dag):
 ######################################################################################
 
 @app.errorhandler(404)
-def circles(error):
+def circles(self):
+    model_view_endpoints = ('/taskinstance', '/dagrun', '/basejob', '/slamiss', '/log')
+    filter_regex = 'flt[0-9]+_(.*?)_(contains|not_contains|equals|not_equal|greater_than|smaller_than)'
+    boolean_filter_regex = 'flt[0-9]+_(.*?)_equals=1'
+    string_filter_mapping = {'contains': "_flt_2_{}",
+                             'not_contains': "_flt_6_{}",
+                             'equals': "_flt_3_{}",
+                             'not_equal': "_flt_7_{}"}
+    date_filter_mapping = {'equals': "_flt_0_{}",
+                           'not_equal': "_flt_3_{}",
+                           'greater_than': "_flt_1_{}",
+                           'smaller_than': "_flt_2_{}"}
+
+    path = request.full_path
+    if path.startswith('/admin'):
+        path = path.replace('admin/airflow', '') \
+            .replace('admin', '').replace('//', '/')
+
+        if path.startswith(model_view_endpoints):
+            parts = path.split('?')
+            model = parts[0]
+            # old use call Job as basejob model and new call it as job
+            model = model.replace('basejob', 'job')
+            path = model + '/list/'
+            if len(parts) > 1:
+                filters = []
+                for cur_filter in parts[1].split('&'):
+                    m = re.search(filter_regex, cur_filter)
+                    if m:
+                        field = m.group(1)
+                        filter_type = m.group(2)
+                        if 'timestamp' in cur_filter or 'latest_heartbeat' in cur_filter \
+                            or 'date' in cur_filter:
+                            cur_filter = re.sub(filter_regex,
+                                                date_filter_mapping[filter_type].format(field),
+                                                cur_filter)
+                        elif 'external_trigger' in cur_filter or 'email_sent' in cur_filter:
+                            cur_filter = re.sub(boolean_filter_regex, "_flt_0_{}=y".format(field),
+                                                cur_filter)
+                        else:
+                            cur_filter = re.sub(filter_regex,
+                                                string_filter_mapping[filter_type].format(field),
+                                                cur_filter)
+                        filters.append(cur_filter)
+                joined_filter = '&'.join(filters)
+                path = path + '?' + joined_filter
+
+        path = path.replace('//', '/')
+        logging.info("Redirecting from {} to {}".format(request.full_path, path))
+        return redirect(path)
+
     return render_template(
         'airflow/circles.html', hostname=socket.getfqdn()), 404
 

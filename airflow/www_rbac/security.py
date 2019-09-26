@@ -495,7 +495,7 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
         try:
             self.clean_perms()
         except IntegrityError:
-            logging.info('Failed to clean  perms')
+            logging.info('Failed to clean perms')
 
     def sync_lookup_table(self):
         ab_perm_view_role = sqla_models.assoc_permissionview_role
