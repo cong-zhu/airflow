@@ -305,6 +305,7 @@ class Airflow(AirflowBaseView):
         return self.render_template(
             'airflow/dags.html',
             dags=dags,
+            webserver_dags=dagbag.dags,
             hide_paused=hide_paused,
             current_page=current_page,
             search_query=arg_search_query if arg_search_query else '',

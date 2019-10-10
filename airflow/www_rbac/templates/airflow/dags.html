@@ -84,9 +84,14 @@
 
                 <!-- Column 3: Name -->
                 <td>
-                    <a href="{{ url_for('Airflow.'+ dag.get_default_view(), dag_id=dag.dag_id) }}" title="{{ dag.description }}">
+                    {% if dag.dag_id in webserver_dags %}
+                    <a href="{{ url_for('Airflow.'+dag.get_default_view(), dag_id=dag.dag_id) }}" title="{{ dag.description }}">
                         {{ dag.dag_id }}
                     </a>
+                    {% else %}
+                        {{ dag.dag_id }}
+                        <span class="glyphicon glyphicon-info-sign" class="info" aria-hidden="true" title="This DAG isn't available in the web server's DagBag object. It shows up in this list because the scheduler marked it as active in the metadata database."></span>
+                    {% endif %}
                 </td>
 
                 <!-- Column 4: Dag Schedule -->
