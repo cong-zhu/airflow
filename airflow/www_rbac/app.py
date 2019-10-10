@@ -70,7 +70,7 @@ def create_app(config=None, session=None, testing=False, app_name="Airflow"):
 
     csrf.init_app(app)
 
-    db = SQLA(app)
+    db = SQLA(app, engine_options={'pool_pre_ping': True, 'pool_recycle': 250})
 
     from airflow import api
     api.load_auth()

@@ -18,10 +18,13 @@
 # under the License.
 #
 
+import logging
+from collections import defaultdict
 from flask import g
 from flask_appbuilder.security.sqla import models as sqla_models
 from flask_appbuilder.security.sqla.manager import SecurityManager
 from sqlalchemy import or_
+from sqlalchemy.exc import IntegrityError
 
 from airflow import models
 from airflow.www_rbac.app import appbuilder
@@ -171,6 +174,10 @@ EXISTING_ROLES = {
 
 class AirflowSecurityManager(SecurityManager, LoggingMixin):
 
+    def __init__(self, *args, **kwargs):
+        super(AirflowSecurityManager, self).__init__(*args, **kwargs)
+        self._role_pvm_name_lookup_table = defaultdict(set)
+
     def init_role(self, role_name, role_vms, role_perms):
         """
         Initialize the role with the permissions and related view-menus.
@@ -199,6 +206,12 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
         else:
             self.log.debug('Existing permissions for the role:%s '
                            'within the database will persist.', role_name)
+
+    def find_role(self, name, lock_for_update=False):
+        if lock_for_update:
+            return self.get_session.query(self.role_model).filter_by(name=name).with_for_update().first()
+        else:
+            return self.get_session.query(self.role_model).filter_by(name=name).first()
 
     def get_user_roles(self, user=None):
         """
@@ -266,6 +279,15 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
         if user.is_anonymous:
             return self.is_item_public(permission, view_name)
         return self._has_view_access(user, permission, view_name)
+
+    def _has_view_access(self, user, permission_name, view_name):
+        roles = user.roles
+
+        for role in roles:
+            if role.name in self._role_pvm_name_lookup_table and \
+                    (view_name, permission_name) in self._role_pvm_name_lookup_table[role.name]:
+                return True
+        return False
 
     def _get_and_cache_perms(self):
         """
@@ -420,8 +442,8 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
             existing_perm_view_by_user = self.get_session.query(ab_perm_view_role)\
                 .filter(ab_perm_view_role.columns.role_id == role.id)
 
-            existing_perms_views = set([pv.permission_view_id
-                                        for pv in existing_perm_view_by_user])
+            existing_perms_views = set([pvr.permission_view_id
+                                        for pvr in existing_perm_view_by_user])
             missing_perm_views = all_perm_views - existing_perms_views
 
             for perm_view_id in missing_perm_views:
@@ -442,7 +464,7 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
         pvms = self.get_session.query(sqla_models.PermissionView).all()
         pvms = [p for p in pvms if p.permission and p.view_menu]
 
-        admin = self.find_role('Admin')
+        admin = self.find_role('Admin', lock_for_update=True)
         admin.permissions = list(set(admin.permissions) | set(pvms))
 
         self.get_session.commit()
@@ -469,7 +491,26 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
 
         # init existing roles, the rest role could be created through UI.
         self.update_admin_perm_view()
-        self.clean_perms()
+        self.sync_lookup_table()
+        try:
+            self.clean_perms()
+        except IntegrityError:
+            logging.info('Failed to clean  perms')
+
+    def sync_lookup_table(self):
+        ab_perm_view_role = sqla_models.assoc_permissionview_role
+        perm_view = self.permissionview_model
+        view_menu = self.viewmenu_model
+        perm = self.permission_model
+        role = self.role_model
+        pvrs = self.get_session.query(role.name, perm.name, view_menu.name)\
+            .join(ab_perm_view_role)\
+            .join(perm_view)\
+            .join(perm)\
+            .join(view_menu)\
+            .all()
+        for role_name, perm_name, view_name in pvrs:
+            self._role_pvm_name_lookup_table[role_name].add((view_name, perm_name))
 
     def sync_perm_for_dag(self, dag_id):
         """

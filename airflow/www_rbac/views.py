@@ -44,7 +44,8 @@ from flask_babel import lazy_gettext
 import lazy_object_proxy
 from pygments import highlight, lexers
 from pygments.formatters import HtmlFormatter
-from sqlalchemy import or_, desc, and_, union_all
+from sqlalchemy import and_, desc, or_, union_all
+from sqlalchemy.sql.expression import tuple_
 from wtforms import SelectField, validators
 
 import airflow
@@ -196,15 +197,44 @@ class Airflow(AirflowBaseView):
 
         return wwwutils.json_response(payload)
 
+    @staticmethod
+    def _should_hide_paused(show_paused_arg):
+        hide_paused_dags_by_default = conf.getboolean('webserver',
+                                                      'hide_paused_dags_by_default')
+
+        if show_paused_arg.strip().lower() == 'false':
+            hide_paused = True
+        elif show_paused_arg.strip().lower() == 'true':
+            hide_paused = False
+        else:
+            hide_paused = hide_paused_dags_by_default
+
+        return hide_paused
+
+    @staticmethod
+    def filter_dag_ids(requested_dag_ids):
+        dag_ids_with_access = appbuilder.sm.get_accessible_dag_ids()
+
+        # if user has access to all_dags, filter by requested_dag_ids
+        # else intercept of dag_ids_with_access and requested_dag_ids
+        if 'all_dags' not in dag_ids_with_access:
+            filtered_dag_ids = list(set(requested_dag_ids).intersection(set(dag_ids_with_access)))
+        else:
+            filtered_dag_ids = requested_dag_ids
+
+        # exclude dag_ids not in dagbag
+        parsed_dag_ids = set(dagbag.dags.keys())
+
+        return list(set(filtered_dag_ids).intersection(parsed_dag_ids))
+
     @expose('/home')
     @has_access
     @provide_session
     def index(self, session=None):
         DM = models.DagModel
 
-        hide_paused_dags_by_default = conf.getboolean('webserver',
-                                                      'hide_paused_dags_by_default')
         show_paused_arg = request.args.get('showPaused', 'None')
+        hide_paused = self._should_hide_paused(show_paused_arg)
 
         default_dag_run = conf.getint('webserver', 'default_dag_run_display_number')
         num_runs = request.args.get('num_runs')
@@ -221,13 +251,6 @@ class Airflow(AirflowBaseView):
 
         dags_per_page = PAGE_SIZE
         current_page = get_int_arg(arg_current_page, default=0)
-
-        if show_paused_arg.strip().lower() == 'false':
-            hide_paused = True
-        elif show_paused_arg.strip().lower() == 'true':
-            hide_paused = False
-        else:
-            hide_paused = hide_paused_dags_by_default
 
         # read orm_dags from the db
         query = session.query(DM).filter(
@@ -282,6 +305,7 @@ class Airflow(AirflowBaseView):
         return self.render_template(
             'airflow/dags.html',
             dags=dags,
+            webserver_dags=dagbag.dags,
             hide_paused=hide_paused,
             current_page=current_page,
             search_query=arg_search_query if arg_search_query else '',
@@ -296,110 +320,34 @@ class Airflow(AirflowBaseView):
             auto_complete_data=auto_complete_data,
             num_runs=num_runs)
 
-    @expose('/dag_stats')
+    @expose('/dag_stats', methods=['POST'])
     @has_access
     @provide_session
     def dag_stats(self, session=None):
         dr = models.DagRun
+        if request.is_json:
+            requested_dag_ids = request.json.get('dag_ids', [])
+        else:
+            requested_dag_ids = []
 
-        filter_dag_ids = appbuilder.sm.get_accessible_dag_ids()
+        filtered_dag_ids = self.filter_dag_ids(requested_dag_ids)
 
         dag_state_stats = session.query(dr.dag_id, dr.state, sqla.func.count(dr.state))\
             .group_by(dr.dag_id, dr.state)
 
         payload = {}
-        if filter_dag_ids:
-            if 'all_dags' not in filter_dag_ids:
-                dag_state_stats = dag_state_stats.filter(dr.dag_id.in_(filter_dag_ids))
+        if filtered_dag_ids:
+            dag_state_stats = dag_state_stats.filter(dr.dag_id.in_(filtered_dag_ids))
+
             data = {}
             for dag_id, state, count in dag_state_stats:
                 if dag_id not in data:
                     data[dag_id] = {}
                 data[dag_id][state] = count
 
-            if 'all_dags' in filter_dag_ids:
-                filter_dag_ids = [dag_id for dag_id, in session.query(models.DagModel.dag_id)]
-
-            for dag_id in filter_dag_ids:
-                if 'all_dags' in filter_dag_ids or dag_id in filter_dag_ids:
-                    payload[dag_id] = []
-                    for state in State.dag_states:
-                        count = data.get(dag_id, {}).get(state, 0)
-                        payload[dag_id].append({
-                            'state': state,
-                            'count': count,
-                            'dag_id': dag_id,
-                            'color': State.color(state)
-                        })
-        return wwwutils.json_response(payload)
-
-    @expose('/task_stats')
-    @has_access
-    @provide_session
-    def task_stats(self, session=None):
-        TI = models.TaskInstance
-        DagRun = models.DagRun
-        Dag = models.DagModel
-
-        filter_dag_ids = appbuilder.sm.get_accessible_dag_ids()
-
-        payload = {}
-        if not filter_dag_ids:
-            return
-
-        LastDagRun = (
-            session.query(
-                        DagRun.dag_id,
-                        sqla.func.max(DagRun.execution_date).label('execution_date'))
-                   .join(Dag, Dag.dag_id == DagRun.dag_id)
-                   .filter(DagRun.state != State.RUNNING)
-                   .filter(Dag.is_active == True)  # noqa
-                   .group_by(DagRun.dag_id)
-                   .subquery('last_dag_run')
-        )
-        RunningDagRun = (
-            session.query(DagRun.dag_id, DagRun.execution_date)
-                   .join(Dag, Dag.dag_id == DagRun.dag_id)
-                   .filter(DagRun.state == State.RUNNING)
-                   .filter(Dag.is_active == True)  # noqa
-                   .subquery('running_dag_run')
-        )
-
-        # Select all task_instances from active dag_runs.
-        # If no dag_run is active, return task instances from most recent dag_run.
-        LastTI = (
-            session.query(TI.dag_id.label('dag_id'), TI.state.label('state'))
-                   .join(LastDagRun,
-                         and_(LastDagRun.c.dag_id == TI.dag_id,
-                              LastDagRun.c.execution_date == TI.execution_date))
-        )
-        RunningTI = (
-            session.query(TI.dag_id.label('dag_id'), TI.state.label('state'))
-                   .join(RunningDagRun,
-                         and_(RunningDagRun.c.dag_id == TI.dag_id,
-                              RunningDagRun.c.execution_date == TI.execution_date))
-        )
-
-        UnionTI = union_all(LastTI, RunningTI).alias('union_ti')
-        qry = (
-            session.query(UnionTI.c.dag_id, UnionTI.c.state, sqla.func.count())
-                   .group_by(UnionTI.c.dag_id, UnionTI.c.state)
-        )
-
-        data = {}
-        for dag_id, state, count in qry:
-            if 'all_dags' in filter_dag_ids or dag_id in filter_dag_ids:
-                if dag_id not in data:
-                    data[dag_id] = {}
-                data[dag_id][state] = count
-        session.commit()
-
-        if 'all_dags' in filter_dag_ids:
-            filter_dag_ids = [dag_id for dag_id, in session.query(models.DagModel.dag_id)]
-        for dag_id in filter_dag_ids:
-            if 'all_dags' in filter_dag_ids or dag_id in filter_dag_ids:
+            for dag_id in filtered_dag_ids:
                 payload[dag_id] = []
-                for state in State.task_states:
+                for state in State.dag_states:
                     count = data.get(dag_id, {}).get(state, 0)
                     payload[dag_id].append({
                         'state': state,
@@ -407,6 +355,73 @@ class Airflow(AirflowBaseView):
                         'dag_id': dag_id,
                         'color': State.color(state)
                     })
+        return wwwutils.json_response(payload)
+
+    @expose('/task_stats', methods=['POST'])
+    @has_access
+    @provide_session
+    def task_stats(self, session=None):
+        TI = models.TaskInstance
+        DagRun = models.DagRun
+        Dag = models.DagModel
+
+        payload = {}
+
+        if request.is_json:
+            requested_dag_ids = request.json.get('dag_ids', [])
+        else:
+            requested_dag_ids = []
+
+        filtered_dag_ids = self.filter_dag_ids(requested_dag_ids)
+        if not filtered_dag_ids:
+            return wwwutils.json_response(payload)
+
+
+        lastDagRun_py = session.query(
+                        DagRun.dag_id,
+                        sqla.func.max(DagRun.execution_date).label('execution_date'))\
+            .join(Dag, Dag.dag_id == DagRun.dag_id) \
+            .filter(Dag.dag_id.in_(filtered_dag_ids))\
+            .filter(DagRun.state != State.RUNNING)\
+            .filter(Dag.is_active == True)\
+            .filter(Dag.is_subdag == False)\
+            .group_by(DagRun.dag_id)\
+            .all()
+
+        RunningDagRun_py = session.query(DagRun.dag_id, DagRun.execution_date)\
+                .join(Dag, Dag.dag_id == DagRun.dag_id) \
+                .filter(Dag.dag_id.in_(filtered_dag_ids)) \
+                .filter(DagRun.state == State.RUNNING)\
+                .filter(Dag.is_active == True)\
+                .filter(Dag.is_subdag == False)\
+                .all()
+
+        dag_id_exec_date_tuple_list = []
+        dag_id_exec_date_tuple_list.extend(lastDagRun_py)
+        dag_id_exec_date_tuple_list.extend(RunningDagRun_py)
+
+        qry = session.query(TI.dag_id, TI.state,  sqla.func.count())\
+            .filter(tuple_(TI.dag_id, TI.execution_date).in_(dag_id_exec_date_tuple_list))\
+            .group_by(TI.dag_id, TI.state)
+
+
+        data = {}
+        for dag_id, state, count in qry:
+            if dag_id not in data:
+                data[dag_id] = {}
+            data[dag_id][state] = count
+        session.commit()
+
+        for dag_id in filtered_dag_ids:
+           payload[dag_id] = []
+           for state in State.task_states:
+               count = data.get(dag_id, {}).get(state, 0)
+               payload[dag_id].append({
+                   'state': state,
+                   'count': count,
+                   'dag_id': dag_id,
+                   'color': State.color(state)
+               })
         return wwwutils.json_response(payload)
 
     @expose('/code')
