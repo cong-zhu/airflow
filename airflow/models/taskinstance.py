@@ -580,7 +580,7 @@ class TaskInstance(Base, LoggingMixin):
             self,
             dep_context=None,
             session=None,
-            verbose=False):
+            verbose=True):
         """
         Returns whether or not all the conditions are met for this task instance to be run
         given the context for the dependencies (e.g. a task instance being force run from
@@ -626,7 +626,7 @@ class TaskInstance(Base, LoggingMixin):
                     session,
                     dep_context):
 
-                self.log.debug(
+                self.log.info(
                     "%s dependency '%s' PASSED: %s, %s",
                     self, dep_status.dep_name, dep_status.passed, dep_status.reason
                 )
