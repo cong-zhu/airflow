@@ -516,7 +516,7 @@ def run(args, dag=None):
     ti.init_run_context(raw=args.raw)
 
     hostname = get_hostname()
-    log.info("Running %s on host %s", ti, hostname)
+    log.info("Running %s on host %s, args: %s, ignore_all_dependencies: %s", ti, hostname, args, args.ignore_all_dependencies)
 
     try:
         if args.interactive:
