@@ -620,9 +620,6 @@ class TaskInstance(Base, LoggingMixin):
             dep_context=None,
             session=None):
         dep_context = dep_context or DepContext()
-
-        self.log.info("ppppp, checking get_failed_dep_statuses: %s, %s, %s", dep_context.__dict__, self.task.deps, dep_context.deps | self.task.deps)
-
         for dep in dep_context.deps | self.task.deps:
             for dep_status in dep.get_dep_statuses(
                     self,
@@ -781,9 +778,6 @@ class TaskInstance(Base, LoggingMixin):
                 ignore_ti_state=ignore_ti_state,
                 ignore_depends_on_past=ignore_depends_on_past,
                 ignore_task_deps=ignore_task_deps)
-
-            self.log.info("ppppp, checking non_requeueable_dep_context: %s", non_requeueable_dep_context.__dict__)
-
             if not self.are_dependencies_met(
                     dep_context=non_requeueable_dep_context,
                     session=session,
@@ -810,9 +804,6 @@ class TaskInstance(Base, LoggingMixin):
                 ignore_depends_on_past=ignore_depends_on_past,
                 ignore_task_deps=ignore_task_deps,
                 ignore_ti_state=ignore_ti_state)
-
-            self.log.info("ppppp, checking REQUEUEABLE_DEPS: %s", dep_context.__dict__)
-
             if not self.are_dependencies_met(
                     dep_context=dep_context,
                     session=session,
