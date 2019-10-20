@@ -107,16 +107,8 @@ class LocalTaskJob(BaseJob):
 
                 # Periodically heartbeat so that the scheduler doesn't think this
                 # is a zombie
-                try:
-                    self.heartbeat()
-                    last_heartbeat_time = time.time()
-                except OperationalError:
-                    Stats.incr('local_task_job_heartbeat_failure', 1, 1)
-                    self.log.exception(
-                        "Exception while trying to heartbeat! Sleeping for %s seconds",
-                        self.heartrate
-                    )
-                    time.sleep(self.heartrate)
+                last_heartbeat_time = time.time()
+                self.heartbeat()
 
                 # If it's been too long since we've heartbeat, then it's possible that
                 # the scheduler rescheduled this task, so kill launched processes.
@@ -128,6 +120,14 @@ class LocalTaskJob(BaseJob):
                                            "exceeded limit ({}s)."
                                            .format(time_since_last_heartbeat,
                                                    heartbeat_time_limit))
+
+                if time_since_last_heartbeat < self.heartrate:
+                    sleep_for = self.heartrate - time_since_last_heartbeat
+                    self.log.warning("Time since last heartbeat(%.2f s) < heartrate(%s s)"
+                                     ", sleeping for %s s", time_since_last_heartbeat,
+                                     self.heartrate, sleep_for)
+                    time.sleep(sleep_for)
+
         finally:
             self.on_kill()
 
