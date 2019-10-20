@@ -93,13 +93,11 @@ class BaseTIDep(object):
         if dep_context is None:
             dep_context = DepContext()
 
-        print('ppppp', 'check ignore_all_deps', self.IGNOREABLE, dep_context.__dict__, type(dep_context.ignore_all_deps))
         if self.IGNOREABLE and dep_context.ignore_all_deps:
             yield self._passing_status(
                 reason="Context specified all dependencies should be ignored.")
             return
 
-        print('ppppp', 'check ignore_task_deps', self.IS_TASK_DEP, dep_context.__dict__, type(dep_context.ignore_task_deps))
         if self.IS_TASK_DEP and dep_context.ignore_task_deps:
             yield self._passing_status(
                 reason="Context specified all task dependencies should be ignored.")
