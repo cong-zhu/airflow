@@ -1063,7 +1063,7 @@ def worker(args):
         'concurrency': args.concurrency,
         'autoscale': autoscale,
         'hostname': args.celery_hostname,
-        'loglevel': conf.get('core', 'LOGGING_LEVEL'),
+        'loglevel': logging.DEBUG,
         'without_gossip': args.without_gossip,
         'without_mingle': args.without_mingle,
         'without_heartbeat': args.without_heartbeat,
