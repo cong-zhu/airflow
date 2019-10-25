@@ -1400,7 +1400,7 @@ class SchedulerJob(BaseJob):
         self.executor.start()
 
         self.log.info("Resetting orphaned tasks for active dag runs")
-        self.reset_state_for_orphaned_tasks()
+        #self.reset_state_for_orphaned_tasks()
 
         # Start after resetting orphaned tasks to avoid stressing out DB.
         self.processor_agent.start()
