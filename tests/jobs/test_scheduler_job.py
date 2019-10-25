@@ -1035,7 +1035,7 @@ class SchedulerJobTest(unittest.TestCase):
         scheduler._execute_helper()
 
         ti = dr.get_task_instance(task_id=op1.task_id, session=session)
-        self.assertEqual(ti.state, State.NONE)
+        self.assertEqual(ti.state, State.SCHEDULED)
 
         ti2 = dr2.get_task_instance(task_id=op1.task_id, session=session)
         self.assertEqual(ti2.state, State.SCHEDULED)
