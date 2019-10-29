@@ -26,11 +26,12 @@ from sqlalchemy import (
 from sqlalchemy.ext.declarative import declared_attr
 from sqlalchemy.orm import synonym
 from sqlalchemy.orm.session import Session
+from airflow import configuration as conf
 from airflow.exceptions import AirflowException
 from airflow.models.base import Base, ID_LEN
 from airflow.settings import Stats
 from airflow.ti_deps.dep_context import DepContext
-from airflow.utils import timezone
+from airflow.utils import helpers, timezone
 from airflow.utils.db import provide_session
 from airflow.utils.log.logging_mixin import LoggingMixin
 from airflow.utils.sqlalchemy import UtcDateTime
@@ -383,19 +384,28 @@ class DagRun(Base, LoggingMixin):
                 Stats.incr("task_restored_to_dag.{}".format(dag.dag_id), 1, 1)
                 ti.state = State.NONE
 
+        # Not yet batching above, as it shouldn't touch a lot rows at the same time.
+        session.commit()
+
         # check for missing tasks
+        tis_to_create = []
         for task in six.itervalues(dag.task_dict):
             if task.start_date > self.execution_date and not self.is_backfill:
                 continue
-
             if task.task_id not in task_ids:
+                ti = TaskInstance(task, self.execution_date)
+                tis_to_create.append(ti)
+
+        def create_tis(counts, tis):
+            for ti in tis:
                 Stats.incr(
                     "task_instance_created-{}".format(task.__class__.__name__),
                     1, 1)
-                ti = TaskInstance(task, self.execution_date)
                 session.add(ti)
+            session.commit()
+            return counts + len(tis)
 
-        session.commit()
+        helpers.reduce_in_chunks(create_tis, tis_to_create, 0, conf.getint('scheduler', 'max_tis_per_query'))
 
     @staticmethod
     def get_run(session, dag_id, execution_date):
