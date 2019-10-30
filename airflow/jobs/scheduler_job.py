@@ -1324,6 +1324,7 @@ class SchedulerJob(BaseJob):
                         ti.refresh_from_db(lock_for_update=True)
                         if ti.state == State.QUEUED and try_number == ti.try_number:
                             ti.try_number += 1
+                            ti.max_tries += 1
                             ti.handle_failure(msg)
                         else:
                             self.log.warning("State of task instance {} is changed to {},"
