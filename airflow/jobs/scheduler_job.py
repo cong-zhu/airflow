@@ -1402,7 +1402,7 @@ class SchedulerJob(BaseJob):
         self.executor.start()
 
         self.log.info("Resetting orphaned tasks for active dag runs")
-        self.reset_state_for_orphaned_tasks()
+        #self.reset_state_for_orphaned_tasks()
 
         # Start after resetting orphaned tasks to avoid stressing out DB.
         self.processor_agent.start()
@@ -1598,33 +1598,37 @@ class SchedulerJob(BaseJob):
 
         self._process_dags(dagbag, dags, ti_keys_to_schedule)
 
-        for ti_key in ti_keys_to_schedule:
-            dag = dagbag.dags[ti_key[0]]
-            task = dag.get_task(ti_key[1])
-            ti = models.TaskInstance(task, ti_key[2])
+        def mark_tis_as_scheduled(counts, ti_keys_to_schedule):
+            for ti_key in ti_keys_to_schedule:
+                dag = dagbag.dags[ti_key[0]]
+                task = dag.get_task(ti_key[1])
+                ti = models.TaskInstance(task, ti_key[2])
 
-            ti.refresh_from_db(session=session, lock_for_update=True)
-            # We check only deps needed to set TI to SCHEDULED state here.
-            # Deps needed to set TI to QUEUED state will be batch checked later
-            # by the scheduler for better performance.
-            dep_context = DepContext(deps=SCHEDULED_DEPS, ignore_task_deps=True)
+                ti.refresh_from_db(session=session, lock_for_update=True)
+                # We check only deps needed to set TI to SCHEDULED state here.
+                # Deps needed to set TI to QUEUED state will be batch checked later
+                # by the scheduler for better performance.
+                dep_context = DepContext(deps=SCHEDULED_DEPS, ignore_task_deps=True)
 
-            # Only schedule tasks that have their dependencies met, e.g. to avoid
-            # a task that recently got its state changed to RUNNING from somewhere
-            # other than the scheduler from getting its state overwritten.
-            if ti.are_dependencies_met(
-                    dep_context=dep_context,
-                    session=session,
-                    verbose=True):
-                # Task starts out in the scheduled state. All tasks in the
-                # scheduled state will be sent to the executor
-                ti.state = State.SCHEDULED
+                # Only schedule tasks that have their dependencies met, e.g. to avoid
+                # a task that recently got its state changed to RUNNING from somewhere
+                # other than the scheduler from getting its state overwritten.
+                if ti.are_dependencies_met(
+                        dep_context=dep_context,
+                        session=session,
+                        verbose=True):
+                    # Task starts out in the scheduled state. All tasks in the
+                    # scheduled state will be sent to the executor
+                    ti.state = State.SCHEDULED
 
-            # Also save this task instance to the DB.
-            self.log.info("Creating / updating %s in ORM", ti)
-            session.merge(ti)
-        # commit batch
-        session.commit()
+                # Also save this task instance to the DB.
+                self.log.info("Creating / updating %s in ORM", ti)
+                session.merge(ti)
+            # commit batch
+            session.commit()
+            return counts + len(ti_keys_to_schedule)
+
+        helpers.reduce_in_chunks(mark_tis_as_scheduled, ti_keys_to_schedule, 0, self.max_tis_per_query)
 
         # Record import errors into the ORM
         try:
