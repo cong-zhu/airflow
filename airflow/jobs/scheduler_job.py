@@ -449,7 +449,6 @@ class SchedulerJob(BaseJob):
             TI.execution_date == sq.c.max_ti,
         ).all()
 
-        ts = timezone.utcnow()
         for ti in max_tis:
             task = dag.get_task(ti.task_id)
             dttm = ti.execution_date
@@ -461,8 +460,7 @@ class SchedulerJob(BaseJob):
                         session.merge(SlaMiss(
                             task_id=ti.task_id,
                             dag_id=ti.dag_id,
-                            execution_date=dttm,
-                            timestamp=ts))
+                            execution_date=dttm))
                     dttm = dag.following_schedule(dttm)
         session.commit()
 
