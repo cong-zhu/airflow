@@ -35,11 +35,14 @@ log = LoggingMixin().log
 
 
 @contextlib.contextmanager
-def create_session():
+def create_session(use_proxy=False):
     """
     Contextmanager that will create and teardown a session.
     """
-    session = settings.Session()
+    if use_proxy:
+        session = settings.ProxySession()
+    else:
+        session = settings.Session()
     try:
         yield session
         session.commit()
