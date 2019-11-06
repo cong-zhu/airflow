@@ -27,6 +27,7 @@ from sqlalchemy import or_
 from sqlalchemy.exc import IntegrityError
 
 from airflow import models
+from airflow.settings import Stats
 from airflow.www_rbac.app import appbuilder
 from airflow.utils.db import provide_session
 from airflow.utils.log.logging_mixin import LoggingMixin
@@ -498,6 +499,7 @@ class AirflowSecurityManager(SecurityManager, LoggingMixin):
             logging.info('Failed to clean perms')
 
     def sync_lookup_table(self):
+        Stats.incr('airflow.sync_lookup_table')
         ab_perm_view_role = sqla_models.assoc_permissionview_role
         perm_view = self.permissionview_model
         view_menu = self.viewmenu_model
