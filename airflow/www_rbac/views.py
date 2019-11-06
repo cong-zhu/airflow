@@ -417,6 +417,7 @@ class Airflow(AirflowBaseView):
         Dag = models.DagModel
 
         payload = {}
+        return wwwutils.json_response(payload)
 
         if request.is_json:
             requested_dag_ids = request.json.get('dag_ids', [])
