@@ -628,7 +628,7 @@ class BaseOperator(LoggingMixin):
             if k not in shallow_copy:
                 setattr(result, k, copy.deepcopy(v, memo))
             else:
-                setattr(result, k, copy.copy(v))
+                setattr(result, k, v)
         return result
 
     def __getstate__(self):
