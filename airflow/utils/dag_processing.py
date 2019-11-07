@@ -36,6 +36,7 @@ from collections import namedtuple
 from datetime import timedelta
 from importlib import import_module
 import enum
+from queue import Empty
 from typing import Optional
 
 import psutil
@@ -515,12 +516,14 @@ class DagFileProcessorAgent(LoggingMixin):
         self._last_finish_time = {}
         # Map from file path to the number of runs
         self._run_count = defaultdict(int)
-        # Pipe for communicating signals
+        self._manager = multiprocessing.Manager()
+        self._result_queue = self._manager.Queue()
         self._process = None
         self._done = False
         # Initialized as true so we do not deactivate w/o any actual DAG parsing.
         self._all_files_processed = True
 
+        # Pipe for communicating DagParsingStat
         self._parent_signal_conn = None
         self._collected_dag_buffer = []
 
@@ -538,6 +541,7 @@ class DagFileProcessorAgent(LoggingMixin):
                 self._processor_factory,
                 self._processor_timeout,
                 child_signal_conn,
+                self._result_queue,
                 self._async_mode,
             )
         )
@@ -565,11 +569,8 @@ class DagFileProcessorAgent(LoggingMixin):
             pass
 
     def wait_until_finished(self):
-        while self._parent_signal_conn.poll():
-            try:
-                result = self._parent_signal_conn.recv()
-            except EOFError:
-                break
+        while True:
+            result = self._result_queue.get_nowait()
             self._process_message(result)
             if isinstance(result, DagParsingStat):
                 # In sync mode we don't send this message from the Manager
@@ -583,6 +584,7 @@ class DagFileProcessorAgent(LoggingMixin):
                                processor_factory,
                                processor_timeout,
                                signal_conn,
+                               result_queue,
                                async_mode):
 
         # Make this process start as a new process group - that makes it easy
@@ -609,6 +611,7 @@ class DagFileProcessorAgent(LoggingMixin):
                                                     processor_factory,
                                                     processor_timeout,
                                                     signal_conn,
+                                                    result_queue,
                                                     async_mode)
 
         processor_manager.start()
@@ -620,12 +623,15 @@ class DagFileProcessorAgent(LoggingMixin):
         :return: List of parsing result in SimpleDag format.
         """
         # Receive any pending messages before checking if the process has exited.
-        while self._parent_signal_conn.poll():
+        while True:
             try:
-                result = self._parent_signal_conn.recv()
-            except (EOFError, ConnectionError):
+                result = self._result_queue.get_nowait()
+                try:
+                    self._process_message(result)
+                finally:
+                    self._result_queue.task_done()
+            except Empty:
                 break
-            self._process_message(result)
         simple_dags = self._collected_dag_buffer
         self._collected_dag_buffer = []
 
@@ -692,7 +698,9 @@ class DagFileProcessorAgent(LoggingMixin):
             self.log.warn('Ending without manager process.')
             return
         reap_process_group(self._process.pid, log=self.log)
-        self._parent_signal_conn.close()
+        if self._parent_signal_conn:
+            self._parent_signal_conn.close()
+        self._manager.shutdown()
 
 
 class DagFileProcessorManager(LoggingMixin):
@@ -716,6 +724,7 @@ class DagFileProcessorManager(LoggingMixin):
                  processor_factory,
                  processor_timeout,
                  signal_conn,
+                 result_queue,
                  async_mode=True):
         """
         :param dag_directory: Directory where DAG definitions are kept. All
@@ -733,6 +742,8 @@ class DagFileProcessorManager(LoggingMixin):
         :type processor_timeout: timedelta
         :param signal_conn: connection to communicate signal with processor agent.
         :type signal_conn: airflow.models.connection.Connection
+        :param result_queue: the queue to use for passing back the result to agent.
+        :type result_queue: multiprocessing.Queue
         :param async_mode: whether to start the manager in async mode
         :type async_mode: bool
         """
@@ -742,6 +753,7 @@ class DagFileProcessorManager(LoggingMixin):
         self._max_runs = max_runs
         self._processor_factory = processor_factory
         self._signal_conn = signal_conn
+        self._result_queue = result_queue
         self._async_mode = async_mode
 
         self._parallelism = conf.getint('scheduler', 'max_threads')
@@ -849,7 +861,7 @@ class DagFileProcessorManager(LoggingMixin):
 
             simple_dags = self.heartbeat()
             for simple_dag in simple_dags:
-                self._signal_conn.send(simple_dag)
+                self._result_queue.put(simple_dag)
 
             if not self._async_mode:
                 self.log.debug(
@@ -863,7 +875,7 @@ class DagFileProcessorManager(LoggingMixin):
                 # Collect anything else that has finished, but don't kick off any more processors
                 simple_dags = self.collect_results()
                 for simple_dag in simple_dags:
-                    self._signal_conn.send(simple_dag)
+                    self._result_queue.put(simple_dag)
 
             self._print_stat()
 
@@ -875,7 +887,7 @@ class DagFileProcessorManager(LoggingMixin):
                                               max_runs_reached,
                                               all_files_processed,
                                               )
-            self._signal_conn.send(dag_parsing_stat)
+            self._result_queue.put(dag_parsing_stat)
 
             if max_runs_reached:
                 self.log.info("Exiting dag parsing loop as all files "
