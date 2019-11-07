@@ -169,7 +169,7 @@ class BaseJob(Base, LoggingMixin):
         """
         start_heartbeat = time.time()
         try:
-            with create_session() as session:
+            with create_session(use_proxy=True) as session:
                 job = session.query(BaseJob).filter_by(id=self.id).one()
                 make_transient(job)
                 session.commit()
@@ -208,7 +208,7 @@ class BaseJob(Base, LoggingMixin):
                 sleep(sleep_for)
 
             # Update last heartbeat time
-            with create_session() as session:
+            with create_session(use_proxy=True) as session:
                 job = session.query(BaseJob).filter(BaseJob.id == self.id).first()
                 job.latest_heartbeat = timezone.utcnow()
                 session.merge(job)

@@ -102,12 +102,15 @@ LOG_FORMAT = conf.get('core', 'log_format')
 SIMPLE_LOG_FORMAT = conf.get('core', 'simple_log_format')
 
 SQL_ALCHEMY_CONN = None
+SQL_ALCHEMY_CONN_PROXY = None
 DAGS_FOLDER = None
 PLUGINS_FOLDER = None
 LOGGING_CLASS_PATH = None
 
 engine = None
 Session = None
+ProxySession = None
+proxy_engine = None
 
 
 def policy(task_instance):
@@ -154,9 +157,11 @@ def pod_mutation_hook(pod):  # type: (Pod) -> None
 
 def configure_vars():
     global SQL_ALCHEMY_CONN
+    global SQL_ALCHEMY_CONN_PROXY
     global DAGS_FOLDER
     global PLUGINS_FOLDER
     SQL_ALCHEMY_CONN = conf.get('core', 'SQL_ALCHEMY_CONN')
+    SQL_ALCHEMY_CONN_PROXY = conf.get('core', 'SQL_ALCHEMY_CONN_PROXY')
     DAGS_FOLDER = os.path.expanduser(conf.get('core', 'DAGS_FOLDER'))
 
     PLUGINS_FOLDER = conf.get(
@@ -169,7 +174,9 @@ def configure_vars():
 def configure_orm(disable_connection_pool=False):
     log.debug("Setting up DB connection pool (PID %s)" % os.getpid())
     global engine
+    global proxy_engine
     global Session
+    global ProxySession
     engine_args = {}
 
     pool_connections = conf.getboolean('core', 'SQL_ALCHEMY_POOL_ENABLED')
@@ -232,12 +239,21 @@ def configure_orm(disable_connection_pool=False):
                      bind=engine,
                      expire_on_commit=False))
 
+    proxy_engine = create_engine(SQL_ALCHEMY_CONN_PROXY, **engine_args)
+    setup_event_handlers(proxy_engine, reconnect_timeout)
+    ProxySession = scoped_session(
+        sessionmaker(autocommit=False,
+                     autoflush=False,
+                     bind=proxy_engine,
+                     expire_on_commit=False))
 
 def dispose_orm():
     """ Properly close pooled database connections """
     log.debug("Disposing DB connection pool (PID %s)", os.getpid())
     global engine
+    global proxy_engine
     global Session
+    global ProxySession
 
     if Session:
         Session.remove()
@@ -245,6 +261,13 @@ def dispose_orm():
     if engine:
         engine.dispose()
         engine = None
+
+    if ProxySession:
+        ProxySession.remove()
+        ProxySession = None
+    if proxy_engine:
+        proxy_engine.dispose()
+        proxy_engine = None
 
 
 def configure_adapters():
