@@ -1402,6 +1402,7 @@ class TestDagACLView(TestBase):
         self.check_content_in_response('example_subdag_operator', resp)
         self.check_content_in_response('example_bash_operator', resp)
 
+    @unittest.skip('As we disabled task_stats: airflow-internal/pull/360')
     def test_task_stats_success(self):
         self.logout()
         self.login()
@@ -1418,6 +1419,7 @@ class TestDagACLView(TestBase):
                 follow_redirects=True)
         self.check_content_not_in_response('example_subdag_operator', resp)
 
+    @unittest.skip('As we disabled task_stats: airflow-internal/pull/360')
     def test_task_stats_success_for_all_dag_user(self):
         self.logout()
         self.login(username='all_dag_user',
