@@ -23,6 +23,7 @@ from airflow.models.base import Base
 from airflow.utils.state import State
 from airflow.ti_deps.deps.pool_slots_available_dep import STATES_TO_COUNT_AS_RUNNING
 from airflow.utils.db import provide_session
+from sqlalchemy import func
 
 
 class Pool(Base):
@@ -64,11 +65,11 @@ class Pool(Base):
         from airflow.models.taskinstance import TaskInstance  # Avoid circular import
         return (
             session
-            .query(TaskInstance)
+            .query(func.count())
             .filter(TaskInstance.pool == self.pool)
             .filter(TaskInstance.state.in_(STATES_TO_COUNT_AS_RUNNING))
-            .count()
-        )
+            .one()
+        )[0]
 
     @provide_session
     def used_slots(self, session):
@@ -79,11 +80,11 @@ class Pool(Base):
 
         running = (
             session
-            .query(TaskInstance)
+            .query(func.count())
             .filter(TaskInstance.pool == self.pool)
             .filter(TaskInstance.state == State.RUNNING)
-            .count()
-        )
+            .one()
+        )[0]
         return running
 
     @provide_session
@@ -95,15 +96,18 @@ class Pool(Base):
 
         return (
             session
-            .query(TaskInstance)
+            .query(func.count())
             .filter(TaskInstance.pool == self.pool)
             .filter(TaskInstance.state == State.QUEUED)
-            .count()
-        )
+            .one()
+        )[0]
 
     @provide_session
     def open_slots(self, session):
         """
         Returns the number of slots open at the moment
         """
-        return self.slots - self.occupied_slots(session)
+        if self.slots == -1:
+            return float('inf')
+        else:
+            return self.slots - self.occupied_slots(session)
