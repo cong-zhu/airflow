@@ -662,7 +662,7 @@ class HiveMetastoreHook(BaseHook, Retryable):
         """
         with self.metastore as client:
             partitions = client.get_partitions_by_filter(
-                schema, table, partition, 1)
+                schema, table, partition, HiveMetastoreHook.MAX_PART_COUNT)
 
         if partitions:
             return True
