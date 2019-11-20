@@ -100,7 +100,8 @@
           Code
         </a>
       </li>
-      <li>
+      <!-- Prevent triggering DAGs from the UI -->
+      <li style="display:none">
         <a href="{{ url_for('Airflow.trigger', dag_id=dag.dag_id, origin=url_for('Airflow.tree', dag_id=dag.dag_id)) }}"
           onclick="return confirmTriggerDag(this, '{{ dag.safe_dag_id }}')">
           <span class="glyphicon glyphicon-play-circle" aria-hidden="true"></span>
