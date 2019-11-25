@@ -123,6 +123,16 @@
       </li>
     </ul>
   </div>
+  {% if dag.default_args is defined and dag.default_args['hive_cli_conn_id'] is defined %}
+    {% if dag.default_args['hive_cli_conn_id'] in ['hive_silver', 'hive_gold', 'hive_default'] %}
+      {% set opeartors = dag.task_dict.values() | map(attribute='__class__') | map(attribute='__name__')  | list %}
+      {% if ("StageCheckExchangeOperator" in operators or "HiveOperatorExtended" in opeartors or "HiveOperator" in opeartors) %}
+          <div class="alert alert-danger" role="alert">
+            This DAG is still running with Hive on Gold/Silver. It will be turn off if not migrated to EMR before Dec 06, 2019. See https://air/emr-hive-migration
+          </div>
+      {% endif %}
+    {% endif %}
+  {% endif %}
   <hr>
   <!-- Modal -->
   <div class="modal fade" id="myModal"
