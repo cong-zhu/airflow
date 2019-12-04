@@ -27,7 +27,7 @@ import os
 import re
 import socket
 import traceback
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from datetime import timedelta
 
 from six.moves.urllib.parse import quote
@@ -632,6 +632,7 @@ class Airflow(AirflowBaseView):
                 logs = ["*** Task instance did not exist in the DB\n"]
                 metadata['end_of_log'] = True
             else:
+                # Change logs returns from a list of log string to a list of listed tuples
                 logs, metadatas = handler.read(ti, try_number, metadata=metadata)
                 metadata = metadatas[0]
             return logs, metadata
@@ -662,9 +663,19 @@ class Airflow(AirflowBaseView):
                     metadata.pop('end_of_log', None)
                     metadata.pop('max_offset', None)
                     metadata.pop('offset', None)
+
+                    cached_logs = OrderedDict()
                     while 'end_of_log' not in metadata or not metadata['end_of_log']:
                         logs, metadata = _get_logs_with_metadata(try_number, metadata)
-                        yield "\n".join(logs) + "\n"
+                        # cached_logs saved all loaded logs by host for current try_number and
+                        # generate log stream after the load complete. The reason is to keep
+                        # logs from same host in one place for downloaded logs.
+                        for host, log in logs[0]:
+                            cached_logs[host] = cached_logs.get(host, "") + log
+
+                    msg = "\n".join(cached_logs.values()) + "\n"
+                    yield msg
+
             return Response(_generate_log_stream(try_number, metadata),
                             mimetype="text/plain",
                             headers={"Content-Disposition": "attachment; filename={}".format(

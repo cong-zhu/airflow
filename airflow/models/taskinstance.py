@@ -34,7 +34,7 @@ import dill
 import lazy_object_proxy
 import pendulum
 from six.moves.urllib.parse import quote_plus
-from sqlalchemy import Column, Float, Index, Integer, PickleType, String, func
+from sqlalchemy import Column, Float, Index, Integer, PickleType, String, func, Text, BigInteger
 from sqlalchemy.orm import reconstructor
 from sqlalchemy.orm.session import Session
 
@@ -59,7 +59,8 @@ from airflow.utils.net import get_hostname
 from airflow.utils.sqlalchemy import UtcDateTime
 from airflow.utils.state import State
 from airflow.utils.timeout import timeout
-
+from airflow.configuration import conf
+import jinja2
 
 def clear_task_instances(tis,
                          session,
@@ -208,7 +209,8 @@ class TaskInstance(Base, LoggingMixin):
         databse, in all othercases this will be incremenetd
         """
         # This is designed so that task logs end up in the right file.
-        if self.state == State.RUNNING:
+        # TODO: whether we need sensing here or not (in sensor and task_instance state machine)
+        if self.state in State.running():
             return self._try_number
         return self._try_number + 1
 
@@ -898,6 +900,22 @@ class TaskInstance(Base, LoggingMixin):
                 self.render_templates(context=context)
                 task_copy.pre_execute(context=context)
 
+                if task_copy.is_smart_sensor_compatible():
+                    try:
+                        # Must use task_copy instead of task otherwise no rendered value
+                        if task_copy.register_in_sensor_service(self, context):
+                            self.log.info('Submitting %s to sensor service', self)
+                            self.state = State.SENSING
+                            self.start_date = timezone.utcnow()
+                            if not test_mode:
+                                session.add(Log(self.state, self))
+                            session.merge(self)
+                            session.commit()
+                            return
+                    except Exception as e:
+                        self.log.warning("Failed to register in sensor service. "
+                                         "Continue to run task in non smart sensor mode.", exc_info=True)
+
                 # If a timeout is specified for the task, make it fail
                 # if it goes beyond
                 result = None
@@ -1262,18 +1280,11 @@ class TaskInstance(Base, LoggingMixin):
                 rendered_content = rt(attr, content, context)
                 setattr(task, attr, rendered_content)
 
-    def email_alert(self, exception):
+    def get_email_subject_content(self, exception):
+        # For a ti from DB (without ti.task), return the default value
+        # Reuse it for smart sensor to send default email alert
+        use_default = not hasattr(self, 'task')
         exception_html = str(exception).replace('\n', '<br>')
-        jinja_context = self.get_template_context()
-        # This function is called after changing the state
-        # from State.RUNNING so need to subtract 1 from self.try_number.
-        jinja_context.update(dict(
-            exception=exception,
-            exception_html=exception_html,
-            try_number=self.try_number - 1,
-            max_tries=self.max_tries))
-
-        jinja_env = self.task.get_template_env()
 
         default_subject = 'Airflow alert: {{ti}}'
         # For reporting purposes, we report based on 1-indexed,
@@ -1288,16 +1299,47 @@ class TaskInstance(Base, LoggingMixin):
             'Mark success: <a href="{{ti.mark_success_url}}">Link</a><br>'
         )
 
-        def render(key, content):
-            if configuration.has_option('email', key):
-                path = configuration.get('email', key)
-                with open(path) as f:
-                    content = f.read()
+        if use_default:
+            jinja_context = {'ti': self}
+            # This function is called after changing the state
+            # from State.RUNNING so need to subtract 1 from self.try_number.
+            jinja_context.update(dict(
+                exception=exception,
+                exception_html=exception_html,
+                try_number=self.try_number - 1,
+                max_tries=self.max_tries))
 
-            return jinja_env.from_string(content).render(**jinja_context)
+            jinja_env = jinja2.Environment(
+                loader=jinja2.FileSystemLoader(os.path.dirname(__file__)),
+                autoescape=True)
+            subject = jinja_env.from_string(default_subject).render(**jinja_context)
+            html_content = jinja_env.from_string(default_html_content).render(**jinja_context)
 
-        subject = render('subject_template', default_subject)
-        html_content = render('html_content_template', default_html_content)
+        else:
+            jinja_context = self.get_template_context()
+
+            jinja_context.update(dict(
+                exception=exception,
+                exception_html=exception_html,
+                try_number=self.try_number - 1,
+                max_tries=self.max_tries))
+
+            jinja_env = self.task.get_template_env()
+
+            def render(key, content):
+                if configuration.has_option('email', key):
+                    path = configuration.get('email', key)
+                    with open(path) as f:
+                        content = f.read()
+                return jinja_env.from_string(content).render(**jinja_context)
+
+            subject = render('subject_template', default_subject)
+            html_content = render('html_content_template', default_html_content)
+
+        return subject, html_content
+
+    def email_alert(self, exception):
+        subject, html_content = self.get_email_subject_content(exception)
         send_email(self.task.email, subject, html_content)
 
     def set_duration(self):

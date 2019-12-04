@@ -303,7 +303,8 @@ COMMENT_PATTERN = re.compile(r"\s*#.*")
 
 
 def list_py_file_paths(directory, safe_mode=True,
-                       include_examples=None):
+                       include_examples=None,
+                       include_smart_sensor=conf.getboolean('smart_sensor', 'use_smart_sensor')):
     """
     Traverse a directory and look for Python files.
 
@@ -311,6 +312,8 @@ def list_py_file_paths(directory, safe_mode=True,
     :type directory: unicode
     :param safe_mode: whether to use a heuristic to determine whether a file
         contains Airflow DAG definitions
+    :param include_examples: whether to include the example DAGs
+    :param include_smart_sensor: whether to include the smart sensor DAG
     :return: a list of paths to Python files in the specified directory
     :rtype: list[unicode]
     """
@@ -318,9 +321,9 @@ def list_py_file_paths(directory, safe_mode=True,
         include_examples = conf.getboolean('core', 'LOAD_EXAMPLES')
     file_paths = []
     if directory is None:
-        return []
+        file_paths = []
     elif os.path.isfile(directory):
-        return [directory]
+        file_paths = [directory]
     elif os.path.isdir(directory):
         patterns_by_dir = {}
         for root, dirs, files in os.walk(directory, followlinks=True):
@@ -378,7 +381,18 @@ def list_py_file_paths(directory, safe_mode=True,
     if include_examples:
         import airflow.example_dags
         example_dag_folder = airflow.example_dags.__path__[0]
-        file_paths.extend(list_py_file_paths(example_dag_folder, safe_mode, False))
+        file_paths.extend(list_py_file_paths(example_dag_folder,
+                                             safe_mode,
+                                             include_examples=False,
+                                             include_smart_sensor=False))
+    if include_smart_sensor:
+        from airflow import smart_sensor_dags
+        smart_sensor_dag_folder = smart_sensor_dags.__path__[0]
+        file_paths = list_py_file_paths(smart_sensor_dag_folder,
+                                        safe_mode,
+                                        include_examples=False,
+                                        include_smart_sensor=False) + file_paths
+
     return file_paths
 
 

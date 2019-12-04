@@ -70,14 +70,24 @@ class FileTaskHandler(logging.Handler):
 
     def _render_filename(self, ti, try_number):
         if self.filename_jinja_template:
-            jinja_context = ti.get_template_context()
-            jinja_context['try_number'] = try_number
+            if hasattr(ti, 'task'):
+                jinja_context = ti.get_template_context()
+                jinja_context['try_number'] = try_number
+            else:
+                jinja_context = {
+                    'ti': ti,
+                    'ts': ti.execution_date.isoformat(),
+                    'try_number': try_number,
+                }
             return self.filename_jinja_template.render(**jinja_context)
 
         return self.filename_template.format(dag_id=ti.dag_id,
                                              task_id=ti.task_id,
                                              execution_date=ti.execution_date.isoformat(),
                                              try_number=try_number)
+
+    def _read_grouped_logs(self):
+        return False
 
     def _read(self, ti, try_number, metadata=None):
         """
@@ -140,7 +150,7 @@ class FileTaskHandler(logging.Handler):
                            it returns all logs separated by try_number
         :param metadata: log metadata,
                          can be used for steaming log reading and auto-tailing.
-        :return: a list of logs
+        :return: a list of listed tuples which order log string by host
         """
         # Task instance increments its try number when it starts to run.
         # So the log for a particular task try will only show up when
@@ -152,7 +162,7 @@ class FileTaskHandler(logging.Handler):
             try_numbers = list(range(1, next_try))
         elif try_number < 1:
             logs = [
-                'Error fetching the logs. Try number {} is invalid.'.format(try_number),
+                [('default_host', 'Error fetching the logs. Try number {} is invalid.'.format(try_number))],
             ]
             return logs
         else:
@@ -162,7 +172,9 @@ class FileTaskHandler(logging.Handler):
         metadatas = [{}] * len(try_numbers)
         for i, try_number in enumerate(try_numbers):
             log, metadata = self._read(task_instance, try_number, metadata)
-            logs[i] += log
+            # es_task_handler return logs grouped by host. wrap other handler returning log string
+            # with default/ empty host so that UI can render the response in the same way
+            logs[i] = log if self._read_grouped_logs() else [(task_instance.hostname, log)]
             metadatas[i] = metadata
 
         return logs, metadatas

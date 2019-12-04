@@ -151,7 +151,7 @@ class LocalTaskJob(BaseJob):
         same_hostname = fqdn == ti.hostname
         same_process = ti.pid == os.getpid()
 
-        if ti.state == State.RUNNING:
+        if ti.state in State.running():
             if not same_hostname:
                 self.log.warning("The recorded hostname %s "
                                  "does not match this instance's hostname "

@@ -95,7 +95,8 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
 
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual(self.test_message, logs[0])
+        self.assertEqual(len(logs[0]), 1)
+        self.assertEqual(self.test_message, logs[0][0][-1])
         self.assertFalse(metadatas[0]['end_of_log'])
         self.assertEqual('1', metadatas[0]['offset'])
         self.assertTrue(timezone.parse(metadatas[0]['last_log_timestamp']) > ts)
@@ -118,7 +119,7 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
                                                      'end_of_log': False})
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual(self.test_message, logs[0])
+        self.assertEqual(self.test_message, logs[0][0][-1])
         self.assertNotEqual(another_test_message, logs[0])
 
         self.assertFalse(metadatas[0]['end_of_log'])
@@ -129,7 +130,7 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
         logs, metadatas = self.es_task_handler.read(self.ti, 1)
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual(self.test_message, logs[0])
+        self.assertEqual(self.test_message, logs[0][0][-1])
         self.assertFalse(metadatas[0]['end_of_log'])
         self.assertEqual('1', metadatas[0]['offset'])
         self.assertTrue(
@@ -148,7 +149,7 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
                                                      'end_of_log': False})
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual([''], logs)
+        self.assertEqual([[]], logs)
         self.assertFalse(metadatas[0]['end_of_log'])
         self.assertEqual('0', metadatas[0]['offset'])
         # last_log_timestamp won't change if no log lines read.
@@ -159,7 +160,7 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
         logs, metadatas = self.es_task_handler.read(self.ti, 1, {})
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual(self.test_message, logs[0])
+        self.assertEqual(self.test_message, logs[0][0][-1])
         self.assertFalse(metadatas[0]['end_of_log'])
         # offset should be initialized to 0 if not provided.
         self.assertEqual('1', metadatas[0]['offset'])
@@ -172,7 +173,7 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
         logs, metadatas = self.es_task_handler.read(self.ti, 1, {'end_of_log': False})
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual([''], logs)
+        self.assertEqual([[]], logs)
         self.assertFalse(metadatas[0]['end_of_log'])
         # offset should be initialized to 0 if not provided.
         self.assertEqual('0', metadatas[0]['offset'])
@@ -191,7 +192,7 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
                                                      'end_of_log': False})
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual([''], logs)
+        self.assertEqual([[]], logs)
         self.assertTrue(metadatas[0]['end_of_log'])
         # offset should be initialized to 0 if not provided.
         self.assertEqual('0', metadatas[0]['offset'])
@@ -207,7 +208,8 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
                                                      'end_of_log': False})
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual(self.test_message, logs[0])
+        self.assertEqual(len(logs[0]), 1)
+        self.assertEqual(self.test_message, logs[0][0][-1])
         self.assertFalse(metadatas[0]['end_of_log'])
         self.assertTrue(metadatas[0]['download_logs'])
         self.assertEqual('1', metadatas[0]['offset'])
@@ -224,7 +226,7 @@ class TestElasticsearchTaskHandler(unittest.TestCase):
 
         self.assertEqual(1, len(logs))
         self.assertEqual(len(logs), len(metadatas))
-        self.assertEqual([''], logs)
+        self.assertEqual([[]], logs)
         self.assertFalse(metadatas[0]['end_of_log'])
         self.assertEqual('0', metadatas[0]['offset'])
 

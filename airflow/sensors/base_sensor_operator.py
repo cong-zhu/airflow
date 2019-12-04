@@ -18,12 +18,14 @@
 # under the License.
 
 
+import datetime
 from time import sleep
 from datetime import timedelta
 
+from airflow.configuration import conf
 from airflow.exceptions import AirflowException, AirflowSensorTimeout, \
     AirflowSkipException, AirflowRescheduleException
-from airflow.models import BaseOperator, SkipMixin, TaskReschedule
+from airflow.models import BaseOperator, SkipMixin, TaskReschedule, SensorInstance
 from airflow.utils import timezone
 from airflow.utils.decorators import apply_defaults
 from airflow.ti_deps.deps.ready_to_reschedule import ReadyToRescheduleDep
@@ -59,6 +61,8 @@ class BaseSensorOperator(BaseOperator, SkipMixin):
     """
     ui_color = '#e6f1f2'
     valid_modes = ['poke', 'reschedule']
+    execution_fields = ('poke_interval', 'retries', 'execution_timeout', 'timeout',
+                        'email', 'email_on_retry', 'email_on_failure',)
 
     @apply_defaults
     def __init__(self,
@@ -74,6 +78,9 @@ class BaseSensorOperator(BaseOperator, SkipMixin):
         self.timeout = timeout
         self.mode = mode
         self._validate_input_values()
+        self.sensor_service_enabled = conf.getboolean('smart_sensor', 'use_smart_sensor')
+        self.sensors_support_sensor_service = set(map(lambda l: l.strip(),
+                                                      conf.get('smart_sensor', 'sensors_enabled').split(',')))
 
     def _validate_input_values(self):
         if not isinstance(self.poke_interval, (int, float)) or self.poke_interval < 0:
@@ -96,6 +103,42 @@ class BaseSensorOperator(BaseOperator, SkipMixin):
         override.
         """
         raise AirflowException('Override me.')
+
+    def is_smart_sensor_compatible(self):
+        check_list = [not self.sensor_service_enabled,
+                      self.on_success_callback,
+                      self.on_retry_callback,
+                      self.on_failure_callback]
+        for status in check_list:
+            if status:
+                return False
+
+        operator = self.__class__.__name__
+        return operator in self.sensors_support_sensor_service
+
+    def register_in_sensor_service(self, ti, context):
+        """
+        Register ti in smart sensor service
+        :param ti:
+        :param context:
+        :return: boolean
+        """
+        poke_context = self.get_poke_context(context)
+        execution_context = self.get_execution_context(context)
+
+        return SensorInstance.register(ti, poke_context, execution_context)
+
+    def get_poke_context(self, context):
+        result = {key: getattr(self, key, None) for key in self.__class__.poke_context_fields}
+        return result
+
+    def get_execution_context(self, context):
+        execution_fields = self.__class__.execution_fields
+
+        result = {key: getattr(self, key, None) for key in execution_fields}
+        if result['execution_timeout'] and type(result['execution_timeout']) == datetime.timedelta:
+            result['execution_timeout'] = result['execution_timeout'].total_seconds()
+        return result
 
     def execute(self, context):
         started_at = timezone.utcnow()

@@ -176,6 +176,9 @@ def retry_infra_failure(exponential_backoff=True,
                     # exception has been enabled in the Airflow config.
 
                     if FaultManager.is_infra_failure(legitimate_err):
+                        legitimate_err.mark_as_infra_failure()
+                        if kwargs.get('raise_infra_failure_without_retry', False):
+                            raise legitimate_err
                         # Useful to log this since enabling it may have
                         # prevented a failure.
                         cls_name = legitimate_err.instance.__class__.__name__

@@ -37,6 +37,9 @@ g.node.queued rect {
 g.node.up_for_reschedule rect{
     stroke: turquoise;
 }
+g.node.sensing rect{
+    stroke: lightseagreen;
+}
 g.node.running rect{
     stroke: lime;
 }

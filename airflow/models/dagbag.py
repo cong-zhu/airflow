@@ -80,6 +80,7 @@ class DagBag(BaseDagBag, LoggingMixin):
             dag_folder=None,
             executor=None,
             include_examples=configuration.conf.getboolean('core', 'LOAD_EXAMPLES'),
+            include_smart_sensor=configuration.conf.getboolean('smart_sensor', 'USE_SMART_SENSOR'),
             safe_mode=configuration.conf.getboolean('core', 'DAG_DISCOVERY_SAFE_MODE')):
 
         # do not use default arg in signature, to fix import cycle on plugin load
@@ -98,6 +99,7 @@ class DagBag(BaseDagBag, LoggingMixin):
         self.collect_dags(
             dag_folder=dag_folder,
             include_examples=include_examples,
+            include_smart_sensor=include_smart_sensor,
             safe_mode=safe_mode)
 
     def size(self):
@@ -344,6 +346,7 @@ class DagBag(BaseDagBag, LoggingMixin):
             dag_folder=None,
             only_if_updated=True,
             include_examples=configuration.conf.getboolean('core', 'LOAD_EXAMPLES'),
+            include_smart_sensor=configuration.conf.getboolean('smart_sensor', 'USE_SMART_SENSOR'),
             safe_mode=configuration.conf.getboolean('core', 'DAG_DISCOVERY_SAFE_MODE')):
         """
         Given a file path or a folder, this method looks for python modules,
@@ -368,8 +371,10 @@ class DagBag(BaseDagBag, LoggingMixin):
 
         dags_by_name = {}
 
-        for filepath in list_py_file_paths(dag_folder, safe_mode=safe_mode,
-                                           include_examples=include_examples):
+        for filepath in list_py_file_paths(dag_folder,
+                                           safe_mode=safe_mode,
+                                           include_examples=include_examples,
+                                           include_smart_sensor=include_smart_sensor):
             try:
                 ts = timezone.utcnow()
                 found_dags = self.process_file(

@@ -159,3 +159,7 @@ class AirflowFaultException(AirflowException):
         self.std_out = std_out
         self.std_err = std_err
         self.kwargs = kwargs
+        self.is_infra_failure = False
+
+    def mark_as_infra_failure(self):
+        self.is_infra_failure = True

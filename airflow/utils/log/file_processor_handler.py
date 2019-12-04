@@ -84,7 +84,14 @@ class FileProcessorHandler(logging.Handler):
             self.handler.close()
 
     def _render_filename(self, filename):
-        filename = os.path.relpath(filename, self.dag_dir)
+        # [Airbnb] Fix for airflow native dag access right problem. If the filename is in airflow
+        # source, mock as the dag is under dag_dir/native_dags
+        import airflow
+        airflow_directory = airflow.__path__[0]
+        if filename.startswith(airflow_directory):
+            filename = os.path.join("native_dags", os.path.relpath(filename, airflow_directory))
+        else:
+            filename = os.path.relpath(filename, self.dag_dir)
         ctx = dict()
         ctx['filename'] = filename
 

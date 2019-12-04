@@ -26,7 +26,6 @@ from airflow.utils.decorators import apply_defaults
 class NamedHivePartitionSensor(BaseSensorOperator):
     """
     Waits for a set of partitions to show up in Hive.
-
     :param partition_names: List of fully qualified names of the
         partitions to wait for. A fully qualified name is of the
         form ``schema.table/pk1=pv1/pk2=pv2``, for example,
@@ -42,6 +41,7 @@ class NamedHivePartitionSensor(BaseSensorOperator):
 
     template_fields = ('partition_names',)
     ui_color = '#8d99ae'
+    poke_context_fields = ('partition_names', 'metastore_conn_id')
 
     @apply_defaults
     def __init__(self,
@@ -57,6 +57,7 @@ class NamedHivePartitionSensor(BaseSensorOperator):
         if isinstance(partition_names, basestring):
             raise TypeError('partition_names must be an array of strings')
 
+        self.raise_infra_failure_without_retry = False
         self.metastore_conn_id = metastore_conn_id
         self.partition_names = partition_names
         self.hook = hook
@@ -90,8 +91,13 @@ class NamedHivePartitionSensor(BaseSensorOperator):
         schema, table, partition = self.parse_partition_name(partition)
 
         self.log.info('Poking for %s.%s/%s', schema, table, partition)
+        # The function check_for_named_partition will retry on infra failure by default
+        # For internal sensor object created in smart sensor, it will not retry but
+        # raise the infra failure exception and handle the retry in smart sensor
+
         return self.hook.check_for_named_partition(
-            schema, table, partition)
+            schema, table, partition,
+            raise_infra_failure_without_retry=self.raise_infra_failure_without_retry)
 
     def poke(self, context):
 
@@ -100,3 +106,8 @@ class NamedHivePartitionSensor(BaseSensorOperator):
             if not self.poke_partition(partition_name)
         ]
         return not self.partition_names
+
+    def is_smart_sensor_compatible(self):
+        result = not self.soft_fail and not self.hook and \
+            super(NamedHivePartitionSensor, self).is_smart_sensor_compatible()
+        return result

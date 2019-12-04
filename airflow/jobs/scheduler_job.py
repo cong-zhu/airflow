@@ -1450,6 +1450,7 @@ class SchedulerJob(BaseJob):
                     self._change_state_for_tis_without_dagrun(simple_dag_bag,
                                                               [State.QUEUED,
                                                                State.SCHEDULED,
+                                                               State.SENSING,
                                                                State.UP_FOR_RESCHEDULE],
                                                               State.NONE)
 
@@ -1550,7 +1551,7 @@ class SchedulerJob(BaseJob):
         simple_dags = []
 
         try:
-            dagbag = models.DagBag(file_path, include_examples=False)
+            dagbag = models.DagBag(file_path, include_examples=False, include_smart_sensor=False)
         except Exception:
             self.log.exception("Failed at reloading the DAG file %s", file_path)
             Stats.incr('dag_file_refresh_error', 1, 1)

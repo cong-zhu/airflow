@@ -988,6 +988,13 @@ class BaseOperator(LoggingMixin):
         elif link_name in self.global_operator_extra_link_dict:
             return self.global_operator_extra_link_dict[link_name].get_link(self, dttm)
 
+    def is_smart_sensor_compatible(self):
+        """
+        Return if this operator can use smart service. Default False.
+        :return:
+        """
+        return False
+
 
 class BaseOperatorLink:
     """

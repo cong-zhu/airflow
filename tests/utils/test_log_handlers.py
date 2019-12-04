@@ -109,7 +109,7 @@ class TestFileTaskLogHandler(unittest.TestCase):
         # the logs we read back
         six.assertRegex(
             self,
-            logs[0],
+            logs[0][0][-1],
             target_re,
             "Logs were " + str(logs)
         )

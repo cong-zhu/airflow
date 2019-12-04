@@ -29,7 +29,7 @@ import math
 import os
 import pickle
 import traceback
-from collections import defaultdict
+from collections import defaultdict, OrderedDict
 from datetime import timedelta
 from functools import wraps
 from textwrap import dedent
@@ -873,9 +873,15 @@ class Airflow(AirflowViewMixin, BaseView):
                     metadata.pop('end_of_log', None)
                     metadata.pop('max_offset', None)
                     metadata.pop('offset', None)
+                    cached_logs = OrderedDict()
                     while 'end_of_log' not in metadata or not metadata['end_of_log']:
                         logs, metadata = _get_logs_with_metadata(try_number, metadata)
-                        yield "\n".join(logs) + "\n"
+                        for host, log in logs[0]:
+                            cached_logs[host] = cached_logs.get(host, "") + log
+
+                    msg = "\n".join(cached_logs.values()) + "\n"
+                    yield msg
+
             return Response(_generate_log_stream(try_number, metadata),
                             mimetype="text/plain",
                             headers={"Content-Disposition": "attachment; filename={}".format(

@@ -43,6 +43,7 @@ class MetastorePartitionSensor(SqlSensor):
     """
     template_fields = ('partition_name', 'table', 'schema')
     ui_color = '#8da7be'
+    poke_context_fields = ('partition_name', 'table', 'schema', 'mysql_conn_id')
 
     @apply_defaults
     def __init__(self,
@@ -76,3 +77,6 @@ class MetastorePartitionSensor(SqlSensor):
                 A0.PART_NAME = '{self.partition_name}';
             """.format(self=self)
         return super(MetastorePartitionSensor, self).poke(context)
+
+    def is_smart_sensor_compatible(self):
+        return super(MetastorePartitionSensor, self).is_smart_sensor_compatible()

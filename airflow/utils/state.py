@@ -46,6 +46,7 @@ class State(object):
     UP_FOR_RESCHEDULE = "up_for_reschedule"
     UPSTREAM_FAILED = "upstream_failed"
     SKIPPED = "skipped"
+    SENSING = "sensing"
 
     task_states = (
         SUCCESS,
@@ -58,6 +59,7 @@ class State(object):
         QUEUED,
         NONE,
         SCHEDULED,
+        SENSING,
     )
 
     dag_states = (
@@ -79,6 +81,7 @@ class State(object):
         REMOVED: 'lightgrey',
         SCHEDULED: 'tan',
         NONE: 'lightblue',
+        SENSING: 'lightseagreen',
     }
 
     @classmethod
@@ -91,6 +94,13 @@ class State(object):
         if color in ['green', 'red']:
             return 'white'
         return 'black'
+
+    @classmethod
+    def running(cls):
+        return [
+            cls.RUNNING,
+            cls.SENSING
+        ]
 
     @classmethod
     def finished(cls):
@@ -116,7 +126,17 @@ class State(object):
             cls.SCHEDULED,
             cls.QUEUED,
             cls.RUNNING,
+            cls.SENSING,
             cls.SHUTDOWN,
             cls.UP_FOR_RETRY,
-            cls.UP_FOR_RESCHEDULE
+            cls.UP_FOR_RESCHEDULE,
         ]
+
+
+class PokeState(object):
+    """
+    Static class with poke states constants used in smart operator.
+    """
+    LANDED = 'landed'
+    NOT_LANDED = 'not_landed'
+    POKE_EXCEPTION = 'poke_exception'

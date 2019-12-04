@@ -107,7 +107,7 @@
                 </td>
 
                 <!-- Column 6: Recent Tasks -->
-                <td style="padding:0px; width:200px; height:10px;">
+                <td style="padding:0px; width:240px; height:10px;">
                     <svg height="10" width="10" id='task-run-{{ dag.safe_dag_id }}' style="display: block;"></svg>
                 </td>
 
@@ -400,7 +400,7 @@
             states = json[dag_id];
             g = d3.select('svg#task-run-' + dag_id.replace(/\./g, '__dot__'))
               .attr('height', diameter + (stroke_width_hover * 2))
-              .attr('width', '300px')
+              .attr('width', '360px')
               .selectAll("g")
               .data(states)
               .enter()

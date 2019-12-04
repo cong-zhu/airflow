@@ -674,7 +674,8 @@ class HiveMetastoreHook(BaseHook, Retryable):
     @retry_infra_failure(retry_delay_td=timedelta(minutes=2),
                          max_retry_delay_td=timedelta(minutes=16),
                          max_retry_window_td=timedelta(minutes=130))
-    def check_for_named_partition(self, schema, table, partition_name):
+    def check_for_named_partition(self, schema, table, partition_name,
+                                  raise_infra_failure_without_retry=False):
         """
         Checks whether a partition with a given name exists
 

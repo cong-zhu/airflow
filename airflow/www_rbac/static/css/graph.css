@@ -57,6 +57,9 @@ g.node.up_for_retry rect {
 g.node.up_for_reschedule rect{
     stroke: turquoise;
 }
+g.node.sensing rect{
+    stroke: lightseagreen;
+}
 g.node.queued rect {
     stroke: grey;
 }
