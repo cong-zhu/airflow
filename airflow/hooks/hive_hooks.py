@@ -539,7 +539,7 @@ class HiveCliHook(BaseHook, Retryable):
             if field_dict is None:
                 raise ValueError("Must provide a field dict when creating a table")
             fields = ",\n    ".join(
-                [k + ' ' + v for k, v in field_dict.items()])
+                ['`{k}` {v}'.format(k=k.strip('`'), v=v) for k, v in field_dict.items()])
             hql += "CREATE TABLE IF NOT EXISTS {table} (\n{fields})\n".format(
                 table=table, fields=fields)
             if partition:
