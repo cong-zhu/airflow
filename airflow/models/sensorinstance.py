@@ -140,6 +140,13 @@ class SensorInstance(Base, LoggingMixin):
         return True
 
     @property
+    def key(self):
+        """
+        Returns a tuple that identifies the task instance uniquely
+        """
+        return self.dag_id, self.task_id, self.execution_date
+
+    @property
     def try_number(self):
         """
         Return the try number that this task number will be when it is actually
