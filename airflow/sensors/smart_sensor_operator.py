@@ -223,7 +223,7 @@ class SmartSensorOperator(BaseOperator, SkipMixin):
                  shard_min=0,
                  shard_max=100000,
                  poke_exception_cache_ttl=600,
-                 poke_timeout=3,
+                 poke_timeout=8,
                  poke_exception_to_fail_task_threshold=3,
                  *args,
                  **kwargs):

@@ -61,6 +61,7 @@ for i in range(num_smart_sensor_shard):
         priority_weight=999,
         shard_min=shard_min,
         shard_max=shard_max,
+        poke_timeout=6,
         timeout=timedelta(hours=24).total_seconds(),
     )
 
