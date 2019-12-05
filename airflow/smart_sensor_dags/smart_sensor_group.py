@@ -30,6 +30,9 @@ from airflow.sensors.smart_sensor_operator import SmartSensorOperator
 args = {
     'owner': 'airflow',
     'start_date': airflow.utils.dates.days_ago(2),
+    'email': 'airflow-infrastructure-email.3sydhrgk@airbnb.pagerduty.com',
+    'email_on_failure': True,
+    'email_on_retry': False
 }
 
 num_smart_sensor_shard = conf.getint("smart_sensor", "shards")
@@ -43,7 +46,7 @@ for i in range(num_smart_sensor_shard):
     dag = DAG(
         dag_id=dag_id,
         default_args=args,
-        schedule_interval=timedelta(days=1),
+        schedule_interval=timedelta(minutes=5),
         concurrency=1,
         max_active_runs=1,
         catchup=False,
