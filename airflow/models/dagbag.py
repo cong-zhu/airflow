@@ -198,7 +198,9 @@ class DagBag(BaseDagBag, LoggingMixin):
             if mod_name in sys.modules:
                 del sys.modules[mod_name]
 
-            with timeout(configuration.conf.getint('core', "DAGBAG_IMPORT_TIMEOUT")):
+            # Minerva parsing requires much longer time on gold-tiny,
+            # removing the timeout for Minerva
+            if 'minerva_pipelines' in filepath:
                 try:
                     m = imp.load_source(mod_name, filepath)
                     mods.append(m)
@@ -206,6 +208,15 @@ class DagBag(BaseDagBag, LoggingMixin):
                     self.log.exception("Failed to import: %s", filepath)
                     self.import_errors[filepath] = str(e)
                     self.file_last_changed[filepath] = file_last_changed_on_disk
+            else:
+                with timeout(configuration.conf.getint('core', "DAGBAG_IMPORT_TIMEOUT")):
+                    try:
+                        m = imp.load_source(mod_name, filepath)
+                        mods.append(m)
+                    except Exception as e:
+                        self.log.exception("Failed to import: %s", filepath)
+                        self.import_errors[filepath] = str(e)
+                        self.file_last_changed[filepath] = file_last_changed_on_disk
 
         else:
             zip_file = zipfile.ZipFile(filepath)
