@@ -1961,7 +1961,8 @@ class Airflow(AirflowViewMixin, BaseView):
     def paused(self, session=None):
         dag_id = request.values.get('dag_id')
         is_paused = True if request.args.get('is_paused') == 'false' else False
-        models.DagModel.get_dagmodel(dag_id).set_is_paused(is_paused=is_paused)
+        models.DagModel.get_dagmodel(dag_id).set_is_paused(is_paused=is_paused,
+                                                           including_subdags=False)
         return "OK"
 
     @expose('/refresh', methods=['POST'])
