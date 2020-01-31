@@ -207,8 +207,8 @@ class CgroupTaskRunner(BaseTaskRunner):
         # I wasn't able to track down the root cause of the package install failures, but
         # we might want to revisit that approach at some other point.
         if return_code == 137:
-            self.log.warning("Task failed with return code of 137. This may indicate "
-                             "that it was killed due to excessive memory usage. "
+            self.log.error("Task failed with return code of 137. This may indicate "
+                             "that it was killed by airflow worker due to excessive memory usage. "
                              "Please consider optimizing your task or using the "
                              "resources argument to reserve more memory for your task")
         return return_code
