@@ -202,8 +202,13 @@ class DagBag(BaseDagBag, LoggingMixin):
             # removing the timeout for Minerva
             if 'minerva_pipelines' in filepath:
                 try:
+                    # Emit minerva parsing time
+                    parsing_start_time = timezone.utcnow()
                     m = imp.load_source(mod_name, filepath)
                     mods.append(m)
+
+                    duration = (timezone.utcnow() - parsing_start_time).total_seconds()
+                    Stats.timing("parsing_time.minerva_pipeline", duration)
                 except Exception as e:
                     self.log.exception("Failed to import: %s", filepath)
                     self.import_errors[filepath] = str(e)
